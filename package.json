@@ -1,6 +1,6 @@
 {
-  "name": "nextjs",
-  "version": "0.1.0",
+  "name": "nusantara-batik-chain",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,7 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.16.0",
+    "html5-qrcode": "^2.3.8",
     "next": "16.0.3",
+    "qrcode": "^1.5.4",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },
