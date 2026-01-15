@@ -29,10 +29,27 @@ export async function POST(request) {
     const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg"; // Fallback ke jpeg jika gagal deteksi
     const base64Data = imageBase64.split(",")[1] || imageBase64;
 
-    const prompt = `Bertindaklah sebagai Kurator Seni Batik Profesional. 
-    Buatkan deskripsi sertifikat yang puitis, emosional, dan mendalam (maksimal 1 paragraf pendek) untuk batik karya "${namaPengrajin}". 
-    Filosofi lisan dari pengrajin: "${filosofi}". 
-    Gabungkan dengan analisis visualmu terhadap motif batik di gambar ini.`;
+    const prompt = `Kamu adalah Kurator Seni Batik Profesional dengan keahlian menganalisis motif batik Indonesia.
+
+TUGAS: Analisis gambar batik ini dan buat deskripsi sertifikat keaslian.
+
+ANALISIS VISUAL:
+1. MOTIF: Jika mirip motif tradisional (parang, kawung, mega mendung, dll), sebutkan. 
+   Jika TIDAK mirip motif tradisional, deskripsikan sebagai "motif kreasi/kontemporer" dan jelaskan bentuk-bentuk yang kamu lihat (flora, fauna, geometris, abstrak, dll).
+2. WARNA: Deskripsikan warna dominan dan kombinasinya
+3. KESAN VISUAL: Apa yang membuat batik ini unik/menarik
+
+INFORMASI PENGRAJIN:
+- Nama: "${namaPengrajin}"
+- Filosofi dari pengrajin: "${filosofi}"
+
+INSTRUKSI OUTPUT:
+Buat 1 paragraf deskripsi sertifikat (maksimal 100 kata) yang:
+- Mendeskripsikan apa yang TERLIHAT di gambar (jangan menebak jika tidak yakin)
+- Menghubungkan visual dengan filosofi pengrajin
+- Mengapresiasi nilai artistik dan budaya karya ini
+
+Bahasa Indonesia yang puitis dan otentik.`;
 
     const imagePart = {
       inlineData: {
