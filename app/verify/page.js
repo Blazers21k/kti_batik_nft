@@ -108,6 +108,43 @@ function VerifyContent() {
     }
   };
 
+  const handleScanFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const { Html5Qrcode } = await import("html5-qrcode");
+      const html5QrCode = new Html5Qrcode("qr-file-reader");
+
+      const decodedText = await html5QrCode.scanFile(file, false);
+      console.log("File QR Scanned:", decodedText);
+
+      // Reuse logic
+      try {
+        const url = new URL(decodedText);
+        const scannedId = url.searchParams.get("id");
+        const scannedSig = url.searchParams.get("sig");
+
+        if (scannedId) {
+          const newUrl = `/verify?id=${scannedId}${scannedSig ? `&sig=${scannedSig}` : ''}`;
+          router.push(newUrl);
+        } else {
+          setError("QR Code tidak valid - tidak ada Token ID");
+        }
+      } catch (e) {
+        if (/^\d+$/.test(decodedText)) {
+          router.push(`/verify?id=${decodedText}`);
+        } else {
+          setError("Format QR tidak dikenali");
+        }
+      }
+
+    } catch (err) {
+      console.error("File Scan error:", err);
+      setError("Gagal membaca QR Code dari gambar. Pastikan gambar jelas.");
+    }
+  };
+
   // Stop QR Scanner
   const stopScanner = async () => {
     if (html5QrCodeRef.current) {
@@ -170,13 +207,23 @@ function VerifyContent() {
             <h1 className="text-2xl font-bold text-white mb-2">Verifikasi Batik</h1>
             <p className="text-slate-400 text-sm mb-6">Scan QR Code atau Tempel NFC.</p>
 
-            {/* Scan Button */}
             <button
               onClick={startScanner}
               className="w-full p-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
             >
               📸 SCAN QR CODE
             </button>
+            <div className="mt-3 relative">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleScanFile}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <button className="w-full p-4 bg-white/10 border border-white/10 text-slate-300 rounded-xl font-bold text-sm hover:bg-white/20 transition-all flex items-center justify-center gap-2">
+                🖼️ UPLOAD GAMBAR
+              </button>
+            </div>
 
             {/* Security Notice */}
             <div className="mt-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
@@ -214,6 +261,7 @@ function VerifyContent() {
           </>
         )}
       </div>
+      <div id="qr-file-reader" style={{ display: 'none' }}></div>
     </div>
   );
 
