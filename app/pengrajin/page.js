@@ -48,14 +48,59 @@ export default function Home() {
     setError(""); // Clear error saat user mengetik
   };
 
-  // Fungsi Upload Gambar + Preview
-  const handleImageUpload = (e) => {
+  // Fungsi Kompres Gambar ADAPTIF
+  const compressImage = (file, maxWidth = 800, targetSizeKB = 100) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Resize jika terlalu besar
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Adaptive: mulai 90%, turun sampai target tercapai
+          let quality = 0.9;
+          let compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+
+          while (compressedBase64.length > targetSizeKB * 1024 * 1.37 && quality > 0.3) {
+            quality -= 0.1;
+            compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          }
+
+          console.log(`📸 Quality: ${Math.round(quality * 100)}%, Size: ~${Math.round(compressedBase64.length / 1024)}KB`);
+          resolve(compressedBase64);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Fungsi Upload Gambar + Preview (dengan kompresi)
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setForm((prev) => ({ ...prev, imageBase64: reader.result }));
-      reader.readAsDataURL(file);
-      setError("");
+      setStatus("📸 Mengompres gambar...");
+      try {
+        const compressedImage = await compressImage(file, 600, 100); // max 600px, target 100KB
+        setForm((prev) => ({ ...prev, imageBase64: compressedImage }));
+        setStatus("✅ Gambar berhasil dikompres");
+        setError("");
+      } catch (err) {
+        setError("Gagal memproses gambar");
+      }
     }
   };
 
