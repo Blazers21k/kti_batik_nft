@@ -197,6 +197,21 @@ export default function Home() {
     }
   };
 
+  const writeToNFC = async () => {
+    if (!verifyUrl) return;
+    setStatus("📡 Dekatkan NFC Tag untuk menulis...");
+    try {
+      const ndef = new NDEFReader();
+      await ndef.write({
+        records: [{ recordType: "url", data: window.location.origin + verifyUrl }]
+      });
+      setStatus("✅ Berhasil menulis ke NFC!");
+    } catch (error) {
+      console.error(error);
+      setError("Gagal menulis ke NFC: " + error.message);
+    }
+  };
+
   // --- OPSI 1: MANUAL ---
   const handleManualInput = (e) => {
     e.preventDefault();
@@ -583,7 +598,13 @@ export default function Home() {
                   <div className="flex justify-center mb-4">
                     <img src={qrCodeImage} alt="QR Code Verifikasi" className="w-48 h-48" />
                   </div>
-                  <div className="flex gap-2 justify-center">
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    <button
+                      onClick={writeToNFC}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition-all flex items-center gap-1"
+                    >
+                      📡 Write to NFC
+                    </button>
                     <a
                       href={qrCodeImage}
                       download={`sertifikat-batik-qr.png`}
