@@ -94,7 +94,7 @@ export default function Home() {
     if (file) {
       setStatus("📸 Mengompres gambar...");
       try {
-        const compressedImage = await compressImage(file, 600, 100); // max 600px, target 100KB
+        const compressedImage = await compressImage(file, 400, 30); // max 400px, target 30KB
         setForm((prev) => ({ ...prev, imageBase64: compressedImage }));
         setStatus("✅ Gambar berhasil dikompres");
         setError("");
