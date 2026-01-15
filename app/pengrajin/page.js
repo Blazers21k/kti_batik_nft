@@ -136,7 +136,7 @@ export default function Home() {
 
   // Validasi Terpusat
   const validateForm = useCallback(() => {
-    if (!form.uidNFC) return "Scan NFC terlebih dahulu!";
+    if (!form.uidNFC) return "Scan NFC terlebih dahulu!!";
     if (!form.imageBase64) return "Foto batik wajib diupload!";
     if (!form.namaVerifikator) return "Nama verifikator wajib diisi!";
     if (!form.namaPengrajin) return "Nama pengrajin wajib diisi!";
