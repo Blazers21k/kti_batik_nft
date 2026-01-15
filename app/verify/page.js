@@ -312,6 +312,25 @@ function VerifyContent() {
               </div>
             </div>
 
+            {/* Gambar Batik */}
+            {data.metadata.image && (
+              <div className="relative w-full h-48 bg-white/5 rounded-2xl overflow-hidden border border-white/10">
+                <img
+                  src={
+                    data.metadata.image.startsWith('ipfs://')
+                      ? `https://gateway.pinata.cloud/ipfs/${data.metadata.image.replace('ipfs://', '')}`
+                      : data.metadata.image
+                  }
+                  alt={data.metadata.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.parentElement.innerHTML = '<p class="flex items-center justify-center h-full text-slate-500 text-sm">📷 Gambar tidak tersedia</p>';
+                  }}
+                />
+              </div>
+            )}
+
             {/* Deskripsi AI */}
             <article className="bg-indigo-500/10 p-5 rounded-2xl border border-indigo-500/20 relative">
               <span className="absolute top-3 left-4 text-4xl text-indigo-400/30 font-serif">"</span>

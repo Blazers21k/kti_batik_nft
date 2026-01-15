@@ -22,7 +22,7 @@ export async function POST(request) {
 
     // 2. Ambil & Validasi Input Data
     const body = await request.json().catch(() => ({}));
-    const { namaPengrajin, uidNFC, alamatPengrajin, namaVerifikator, finalDescription, imageBase64 } = body;
+    const { namaPengrajin, uidNFC, alamatPengrajin, namaVerifikator, finalDescription, imageBase64, ipfsUrl } = body;
 
     // Guard Clauses untuk Validasi Input
     if (!uidNFC) return NextResponse.json({ error: "NFC UID wajib diisi." }, { status: 400 });
@@ -44,24 +44,54 @@ export async function POST(request) {
     }
 
     // 5. Konstruksi Metadata & TokenURI
-    // Validasi foto wajib ada
-    if (!imageBase64) {
+    // Support IPFS URL atau base64
+    if (!imageBase64 && !ipfsUrl) {
       return NextResponse.json({ error: "Foto batik wajib diupload." }, { status: 400 });
     }
-    const imageData = imageBase64;
+    // Preferensikan IPFS URL karena lebih murah (gas)
+    const imageData = ipfsUrl || imageBase64;
 
-    const metadata = JSON.stringify({
+    const metadata = {
       name: `Batik Karya ${namaPengrajin}`,
       description: finalDescription,
-      image: imageData, // Menyimpan gambar base64 langsung di metadata
+      image: imageData,
       attributes: [
         { trait_type: "NFC UID", value: uidNFC },
         { trait_type: "Verified By", value: namaVerifikator },
         { trait_type: "Date", value: new Date().toISOString() }
       ]
-    });
+    };
 
-    const tokenURI = `data:application/json;base64,${Buffer.from(metadata).toString('base64')}`;
+    // Upload metadata ke IPFS untuk gas yang sangat murah!
+    let tokenURI;
+    const PINATA_API_KEY = process.env.PINATA_API_KEY;
+    const PINATA_SECRET_KEY = process.env.PINATA_SECRET_KEY;
+
+    if (PINATA_API_KEY && PINATA_SECRET_KEY) {
+      try {
+        const axios = (await import("axios")).default;
+        const pinataRes = await axios.post(
+          "https://api.pinata.cloud/pinning/pinJSONToIPFS",
+          metadata,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              pinata_api_key: PINATA_API_KEY,
+              pinata_secret_api_key: PINATA_SECRET_KEY,
+            }
+          }
+        );
+        const metadataHash = pinataRes.data.IpfsHash;
+        tokenURI = `ipfs://${metadataHash}`;
+        console.log("✅ Metadata uploaded to IPFS:", tokenURI);
+      } catch (ipfsError) {
+        console.warn("⚠️ IPFS metadata upload failed, falling back to on-chain:", ipfsError.message);
+        tokenURI = `data:application/json;base64,${Buffer.from(JSON.stringify(metadata)).toString('base64')}`;
+      }
+    } else {
+      // Fallback ke on-chain jika tidak ada Pinata keys
+      tokenURI = `data:application/json;base64,${Buffer.from(JSON.stringify(metadata)).toString('base64')}`;
+    }
 
     // 6. Inisialisasi Kontrak
     const ABI = ["function cetakSertifikat(address,string,string) public returns (uint256)"];
@@ -73,12 +103,12 @@ export async function POST(request) {
     let gasLimit;
     try {
       const estimatedGas = await contract.cetakSertifikat.estimateGas(recipient, tokenURI, uidNFC);
-      // Tambahkan Buffer 20% (dibulatkan ke atas)
-      gasLimit = (estimatedGas * 120n) / 100n;
-      console.log(`🟢 Gas Terestimasi: ${estimatedGas.toString()}, Dengan Buffer 20%: ${gasLimit.toString()}`);
+      // Tambahkan Buffer 30% (untuk data besar seperti gambar)
+      gasLimit = (estimatedGas * 130n) / 100n;
+      console.log(`🟢 Gas Terestimasi: ${estimatedGas.toString()}, Dengan Buffer 30%: ${gasLimit.toString()}`);
     } catch (gasError) {
       console.warn("⚠️ Gagal estimasi gas, menggunakan fallback gas limit:", gasError.message);
-      gasLimit = 2000000n; // Fallback jika estimasi gagal (misal karena simulasi reverter)
+      gasLimit = 3000000n; // Fallback lebih besar untuk data dengan gambar
     }
 
     // 8. Eksekusi Transaksi

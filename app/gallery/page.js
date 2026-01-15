@@ -42,7 +42,13 @@ const NFTCard = ({ nft }) => {
             <div className="h-40 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 relative overflow-hidden">
                 {nft.image && nft.image !== "ipfs://simulasi" ? (
                     <img
-                        src={nft.image.startsWith("data:") ? nft.image : nft.image.replace("ipfs://", "https://ipfs.io/ipfs/")}
+                        src={
+                            nft.image.startsWith("data:")
+                                ? nft.image
+                                : nft.image.startsWith("ipfs://")
+                                    ? `https://gateway.pinata.cloud/ipfs/${nft.image.replace("ipfs://", "")}`
+                                    : nft.image
+                        }
                         alt={nft.name}
                         className="w-full h-full object-cover"
                     />

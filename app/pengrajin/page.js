@@ -39,6 +39,10 @@ export default function Home() {
   const [verifyUrl, setVerifyUrl] = useState(""); // URL untuk QR Code dengan signature
   const [qrCodeImage, setQrCodeImage] = useState(""); // QR Code sebagai data URL
   const [isRecording, setIsRecording] = useState(false);
+  const [gasEstimate, setGasEstimate] = useState(null); // Estimasi gas fee
+  const [isEstimating, setIsEstimating] = useState(false);
+  const [ipfsUrl, setIpfsUrl] = useState(""); // IPFS URL untuk gambar
+  const [isUploadingIPFS, setIsUploadingIPFS] = useState(false);
 
   // Ref untuk timer cleanup
   const recognitionTimerRef = useRef(null);
@@ -88,17 +92,43 @@ export default function Home() {
     });
   };
 
-  // Fungsi Upload Gambar + Preview (dengan kompresi)
+  // Fungsi Upload Gambar + Preview (dengan kompresi + IPFS)
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
+      console.log(`📁 File asli: ${file.name}, Size: ${Math.round(file.size / 1024)}KB`);
       setStatus("📸 Mengompres gambar...");
+      setIpfsUrl(""); // Reset IPFS URL
+
       try {
-        const compressedImage = await compressImage(file, 400, 30); // max 400px, target 30KB
+        const compressedImage = await compressImage(file, 600, 100); // Kualitas bagus karena pakai IPFS
+        const compressedSizeKB = Math.round(compressedImage.length / 1024);
+        console.log(`✅ Setelah kompresi: ${compressedSizeKB}KB`);
         setForm((prev) => ({ ...prev, imageBase64: compressedImage }));
-        setStatus("✅ Gambar berhasil dikompres");
+
+        // Upload ke IPFS langsung supaya estimate gas lebih murah
+        setStatus("📤 Mengupload ke IPFS...");
+        const ipfsRes = await fetch("/api/ipfs-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageBase64: compressedImage,
+            fileName: `batik_${Date.now()}.jpg`
+          })
+        });
+        const ipfsData = await ipfsRes.json();
+
+        if (ipfsData.success) {
+          setIpfsUrl(ipfsData.ipfsUrl);
+          setStatus(`✅ Upload IPFS berhasil! (${compressedSizeKB}KB)`);
+          console.log("✅ IPFS URL:", ipfsData.ipfsUrl);
+        } else {
+          console.warn("⚠️ IPFS gagal, akan gunakan base64:", ipfsData.error);
+          setStatus(`✅ Gambar dikompres: ${compressedSizeKB}KB (tanpa IPFS)`);
+        }
         setError("");
       } catch (err) {
+        console.error("❌ Gagal proses gambar:", err);
         setError("Gagal memproses gambar");
       }
     }
@@ -149,7 +179,8 @@ export default function Home() {
   const scanNFC = async () => {
     setError("");
     if (!("NDEFReader" in window)) {
-      setError("⚠️ Perangkat ini tidak mendukung NFC. Gunakan smartphone dengan fitur NFC.");
+      // PRODUCTION MODE: Tampilkan error jika tidak ada NFC
+      setError("Perangkat ini tidak mendukung NFC. Gunakan smartphone dengan NFC untuk scan tag.");
       return;
     }
     try {
@@ -223,19 +254,73 @@ export default function Home() {
     setIsAnalyzing(false);
   };
 
+  // --- ESTIMASI GAS ---
+  const handleEstimateGas = async () => {
+    setIsEstimating(true);
+    setError("");
+    setGasEstimate(null);
+    try {
+      const res = await fetch("/api/estimate-gas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          finalDescription: previewText,
+          ipfsUrl: ipfsUrl // Kirim IPFS URL untuk estimasi lebih murah
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGasEstimate(data);
+      } else {
+        setError(data.error || "Gagal estimasi gas");
+      }
+    } catch (err) {
+      setError("Error: " + err.message);
+    }
+    setIsEstimating(false);
+  };
+
   // --- MINTING FINAL ---
   const handleFinalMint = async () => {
     setIsMinting(true);
     setError("");
-    setStatus("🚀 Mengirim ke Blockchain...");
 
     try {
+      // Step 1: Upload gambar ke IPFS terlebih dahulu
+      setStatus("� Mengupload gambar ke IPFS...");
+      let finalIpfsUrl = ipfsUrl;
+
+      if (!finalIpfsUrl && form.imageBase64) {
+        const ipfsRes = await fetch("/api/ipfs-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageBase64: form.imageBase64,
+            fileName: `batik_${form.namaPengrajin}_${Date.now()}.jpg`
+          })
+        });
+        const ipfsData = await ipfsRes.json();
+
+        if (ipfsData.success) {
+          finalIpfsUrl = ipfsData.ipfsUrl;
+          setIpfsUrl(finalIpfsUrl);
+          console.log("✅ IPFS Upload:", finalIpfsUrl);
+        } else {
+          // Fallback ke base64 jika IPFS gagal
+          console.warn("⚠️ IPFS gagal, menggunakan base64:", ipfsData.error);
+        }
+      }
+
+      // Step 2: Mint NFT
+      setStatus("🚀 Mengirim ke Blockchain...");
       const res = await fetch("/api/mint", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          finalDescription: previewText
+          finalDescription: previewText,
+          ipfsUrl: finalIpfsUrl // Kirim IPFS URL, lebih murah!
         })
       });
       const data = await res.json();
@@ -437,10 +522,40 @@ export default function Home() {
                 />
               </div>
 
+              {/* Gas Estimation */}
+              <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-600/30">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">⛽ Estimasi Biaya</span>
+                  <button
+                    onClick={handleEstimateGas}
+                    disabled={isEstimating}
+                    className="px-3 py-1.5 bg-blue-600/80 text-white rounded-lg text-xs font-bold hover:bg-blue-500 transition-all disabled:opacity-50"
+                  >
+                    {isEstimating ? "⏳ Menghitung..." : "🔍 Hitung Gas"}
+                  </button>
+                </div>
+                {gasEstimate && (
+                  <div className={`p-3 rounded-xl border space-y-1 ${gasEstimate.usingIPFS ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
+                    <p className={`text-sm font-bold ${gasEstimate.usingIPFS ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      💰 {gasEstimate.estimatedCostPOL} POL
+                    </p>
+                    <p className={`text-xs ${gasEstimate.usingIPFS ? 'text-emerald-300' : 'text-amber-300'}`}>
+                      ≈ Rp {gasEstimate.estimatedCostIDR.toLocaleString()}
+                    </p>
+                    <p className="text-slate-400 text-[10px]">
+                      {gasEstimate.usingIPFS ? '✅ IPFS' : '⚠️ Base64'} | 📦 {gasEstimate.imageSizeKB} KB | Gas: {gasEstimate.estimatedGas}
+                    </p>
+                  </div>
+                )}
+                {!gasEstimate && !isEstimating && (
+                  <p className="text-slate-500 text-xs text-center">Klik "Hitung Gas" untuk melihat estimasi biaya</p>
+                )}
+              </div>
+
               {/* Buttons */}
               <div className="flex gap-3">
                 <button
-                  onClick={() => { setStep(1); setError(""); }}
+                  onClick={() => { setStep(1); setError(""); setGasEstimate(null); }}
                   className="flex-1 p-4 bg-white/5 border border-white/10 text-slate-300 rounded-xl font-bold text-xs hover:bg-white/10 transition-all"
                 >
                   ⬅ EDIT
