@@ -19,7 +19,6 @@ export default function Home() {
   const [form, setForm] = useState({
     namaPengrajin: "",
     alamatPengrajin: "",
-    namaVerifikator: "",
     uidNFC: "",
     filosofi: "",
     imageBase64: "",
@@ -134,11 +133,9 @@ export default function Home() {
     }
   };
 
-  // Validasi Terpusat
   const validateForm = useCallback(() => {
     if (!form.uidNFC) return "Scan NFC terlebih dahulu!!";
     if (!form.imageBase64) return "Foto batik wajib diupload!";
-    if (!form.namaVerifikator) return "Nama verifikator wajib diisi!";
     if (!form.namaPengrajin) return "Nama pengrajin wajib diisi!";
     return null;
   }, [form]);
@@ -472,19 +469,6 @@ export default function Home() {
               </div>
 
               {/* Verifikator */}
-              <div className="p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20">
-                <p className="text-[10px] font-bold text-amber-400 mb-2 uppercase tracking-wider flex items-center gap-2">
-                  <span>👮</span> Verifikator
-                </p>
-                <input
-                  name="namaVerifikator"
-                  placeholder="Nama Petugas"
-                  onChange={handleChange}
-                  className="w-full p-3 bg-white/10 border border-amber-500/20 rounded-xl text-sm text-white placeholder-amber-200/50 outline-none focus:border-amber-500/50 transition-all"
-                  required
-                />
-              </div>
-
               {/* Buttons */}
               <div className="pt-2 flex gap-3">
                 <button

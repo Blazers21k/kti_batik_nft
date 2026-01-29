@@ -22,13 +22,12 @@ export async function POST(request) {
 
     // 2. Ambil & Validasi Input Data
     const body = await request.json().catch(() => ({}));
-    const { namaPengrajin, uidNFC, alamatPengrajin, namaVerifikator, finalDescription, imageBase64, ipfsUrl } = body;
+    const { namaPengrajin, uidNFC, alamatPengrajin, finalDescription, imageBase64, ipfsUrl } = body;
 
     // Guard Clauses untuk Validasi Input
     if (!uidNFC) return NextResponse.json({ error: "NFC UID wajib diisi." }, { status: 400 });
     if (!finalDescription) return NextResponse.json({ error: "Deskripsi sertifikat tidak boleh kosong." }, { status: 400 });
     if (!namaPengrajin) return NextResponse.json({ error: "Nama pengrajin wajib ada untuk metadata." }, { status: 400 });
-    if (!namaVerifikator) return NextResponse.json({ error: "Nama verifikator wajib ada." }, { status: 400 });
 
     // 3. Setup Provider & Wallet (Ethers v6)
     const provider = new ethers.JsonRpcProvider(alchemyUrl);
@@ -57,7 +56,6 @@ export async function POST(request) {
       image: imageData,
       attributes: [
         { trait_type: "NFC UID", value: uidNFC },
-        { trait_type: "Verified By", value: namaVerifikator },
         { trait_type: "Date", value: new Date().toISOString() }
       ]
     };
