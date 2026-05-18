@@ -3,6 +3,10 @@ import axios from "axios";
 
 export async function POST(request) {
     try {
+        // Request Logging
+        const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+        console.log(`📝 [${new Date().toISOString()}] ${ip} → POST /api/ipfs-upload`);
+
         const PINATA_API_KEY = process.env.PINATA_API_KEY;
         const PINATA_SECRET_KEY = process.env.PINATA_SECRET_KEY;
 

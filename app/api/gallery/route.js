@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 
 export async function GET(request) {
     try {
+        // Request Logging
+        const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+        console.log(`📝 [${new Date().toISOString()}] ${ip} → GET /api/gallery`);
+
         // 1. Validasi Konfigurasi
         const rpcUrl = process.env.ALCHEMY_RPC_URL;
         const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
@@ -123,10 +127,31 @@ export async function GET(request) {
         // Filter null values
         const validNfts = nfts.filter(n => n !== null);
 
+        // Filter by pengrajin name if provided
+        const { searchParams } = new URL(request.url);
+        const pengrajinFilter = searchParams.get("pengrajin");
+
+        let filteredNfts = validNfts;
+        if (pengrajinFilter) {
+            filteredNfts = validNfts.filter(nft => {
+                // Check name field
+                if (nft.name?.toLowerCase().includes(pengrajinFilter.toLowerCase())) return true;
+                // Check attributes for pengrajin name
+                const pengrajinAttr = nft.attributes?.find(a => 
+                    a.trait_type === "Pengrajin" || a.trait_type === "Nama Pengrajin"
+                );
+                if (pengrajinAttr?.value?.toLowerCase().includes(pengrajinFilter.toLowerCase())) return true;
+                // Check description
+                if (nft.description?.toLowerCase().includes(pengrajinFilter.toLowerCase())) return true;
+                return false;
+            });
+        }
+
         return NextResponse.json({
             success: true,
-            total: validNfts.length,
-            data: validNfts
+            total: filteredNfts.length,
+            data: filteredNfts,
+            sertifikat: filteredNfts, // alias for dashboard compatibility
         });
 
     } catch (error) {

@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
     try {
+        // Request Logging
+        const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+        console.log(`📝 [${new Date().toISOString()}] ${ip} → POST /api/estimate-gas`);
+
         const privateKey = process.env.ADMIN_PRIVATE_KEY;
         const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
         const alchemyUrl = process.env.ALCHEMY_RPC_URL;

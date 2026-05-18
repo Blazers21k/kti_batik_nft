@@ -32,6 +32,10 @@ const verifyQRSignature = (tokenId, nfcUid, providedSignature) => {
 
 export async function GET(request) {
   try {
+    // Request Logging
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+    console.log(`📝 [${new Date().toISOString()}] ${ip} → GET /api/verify`);
+
     // 1. Validasi Konfigurasi Blockchain
     const rpcUrl = process.env.ALCHEMY_RPC_URL;
     const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;

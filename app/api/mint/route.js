@@ -6,6 +6,10 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
+    // Request Logging
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+    console.log(`📝 [${new Date().toISOString()}] ${ip} → POST /api/mint`);
+
     console.log("🔵 [Backend] Memulai proses Minting Final...");
 
     // 1. Validasi Konfigurasi Blockchain

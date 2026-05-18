@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
 import QRCode from "qrcode";
+import ThemeToggle, { useTheme } from "../components/ThemeToggle";
 
 // Komponen Logo Gemini
 const GeminiLogo = ({ className }) => (
@@ -16,6 +17,7 @@ const GeminiLogo = ({ className }) => (
 );
 
 export default function Home() {
+  const isDark = useTheme();
   const [form, setForm] = useState({
     namaPengrajin: "",
     alamatPengrajin: "",
@@ -369,19 +371,20 @@ export default function Home() {
   const isLoading = isAnalyzing || isMinting;
 
   return (
-    <div className="min-h-screen bg-slate-950 relative overflow-hidden font-sans">
+    <div className={`min-h-screen relative overflow-hidden font-sans transition-colors duration-500 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
 
-      {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950/50 to-slate-950" />
-      <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl" />
+      {/* Theme Toggle */}
+      <ThemeToggle />
+      <div className={`absolute inset-0 transition-colors duration-500 ${isDark ? 'bg-gradient-to-br from-slate-950 via-indigo-950/50 to-slate-950' : 'bg-gradient-to-br from-slate-50 via-indigo-50/50 to-slate-50'}`} />
+      <div className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl ${isDark ? 'bg-amber-500/10' : 'bg-amber-400/20'}`} />
+      <div className={`absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-400/20'}`} />
 
       {/* Grid Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px]" />
+      <div className={`absolute inset-0 bg-[size:40px_40px] ${isDark ? 'bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)]' : 'bg-[linear-gradient(rgba(0,0,0,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.03)_1px,transparent_1px)]'}`} />
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen p-4 flex justify-center items-center">
-        <div className="bg-white/5 backdrop-blur-xl p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md border border-white/10">
+      <div className={`relative z-10 min-h-screen p-4 flex justify-center items-center ${isDark ? 'text-white' : 'text-slate-800'}`}>
+        <div className={`backdrop-blur-xl p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md border transition-all ${isDark ? 'bg-white/5 border-white/10' : 'bg-white/70 border-slate-200'}`}>
 
           {/* Header */}
           <div className="text-center mb-8">

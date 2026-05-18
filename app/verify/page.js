@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import ThemeToggle, { useTheme } from "../components/ThemeToggle";
 
 // Komponen Logo Gemini (SVG)
 const GeminiLogo = ({ className }) => (
@@ -34,6 +35,7 @@ const formatDate = (dateString) => {
 function VerifyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const isDark = useTheme();
   const id = searchParams.get("id");
   const sig = searchParams.get("sig");
 
@@ -194,18 +196,19 @@ function VerifyContent() {
 
   // TAMPILAN 1: BELUM ADA ID - dengan QR Scanner
   if (!id) return (
-    <div className="min-h-screen bg-slate-950 relative overflow-hidden flex flex-col justify-center items-center p-6">
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950/30 to-slate-950" />
-      <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl" />
+    <div className={`min-h-screen relative overflow-hidden flex flex-col justify-center items-center p-6 transition-colors duration-500 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+      <ThemeToggle />
+      <div className={`absolute inset-0 transition-colors duration-500 ${isDark ? 'bg-gradient-to-br from-slate-950 via-indigo-950/30 to-slate-950' : 'bg-gradient-to-br from-slate-50 via-indigo-50/50 to-slate-50'}`} />
+      <div className={`absolute top-1/3 left-1/4 w-72 h-72 rounded-full blur-3xl ${isDark ? 'bg-cyan-500/10' : 'bg-cyan-400/20'}`} />
+      <div className={`absolute bottom-1/3 right-1/4 w-64 h-64 rounded-full blur-3xl ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-400/20'}`} />
 
-      <div className="relative z-10 bg-white/5 backdrop-blur-xl p-8 rounded-3xl border border-white/10 text-center max-w-sm w-full">
+      <div className={`relative z-10 backdrop-blur-xl p-8 rounded-3xl border text-center max-w-sm w-full transition-all ${isDark ? 'bg-white/5 border-white/10' : 'bg-white/70 border-slate-200 shadow-xl'}`}>
 
         {!isScanning ? (
           <>
             <div className="text-6xl mb-4">📷</div>
-            <h1 className="text-2xl font-bold text-white mb-2">Verifikasi Batik</h1>
-            <p className="text-slate-400 text-sm mb-6">Scan QR Code atau Tempel NFC.</p>
+            <h1 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>Verifikasi Batik</h1>
+            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Scan QR Code atau Tempel NFC.</p>
 
             <button
               onClick={startScanner}
@@ -220,7 +223,7 @@ function VerifyContent() {
                 onChange={handleScanFile}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
-              <button className="w-full p-4 bg-white/10 border border-white/10 text-slate-300 rounded-xl font-bold text-sm hover:bg-white/20 transition-all flex items-center justify-center gap-2">
+              <button className={`w-full p-4 border rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${isDark ? 'bg-white/10 border-white/10 text-slate-300 hover:bg-white/20' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
                 🖼️ UPLOAD GAMBAR
               </button>
             </div>
@@ -254,7 +257,7 @@ function VerifyContent() {
             {/* Cancel Button */}
             <button
               onClick={stopScanner}
-              className="w-full p-3 bg-white/10 border border-white/10 text-slate-300 rounded-xl font-bold text-sm hover:bg-white/20 transition-all"
+              className={`w-full p-3 border rounded-xl font-bold text-sm transition-all ${isDark ? 'bg-white/10 border-white/10 text-slate-300 hover:bg-white/20' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
             >
               ✕ BATAL
             </button>
@@ -268,6 +271,7 @@ function VerifyContent() {
   // TAMPILAN 2: LOADING
   if (loading) return (
     <div className="min-h-screen bg-slate-950 relative overflow-hidden flex flex-col justify-center items-center" role="status">
+      <ThemeToggle />
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-emerald-950/20 to-slate-950" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
 
@@ -281,6 +285,7 @@ function VerifyContent() {
   // TAMPILAN 3: ERROR/PALSU
   if (error) return (
     <div className="min-h-screen bg-slate-950 relative overflow-hidden flex justify-center items-center p-4">
+      <ThemeToggle />
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-red-950/20 to-slate-950" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-red-500/10 rounded-full blur-3xl" />
 
@@ -296,7 +301,8 @@ function VerifyContent() {
 
   // TAMPILAN 4: Data tidak tersedia
   if (!data || !data.metadata) return (
-    <div className="min-h-screen bg-slate-950 flex justify-center items-center p-4">
+    <div className="min-h-screen bg-slate-950 relative flex justify-center items-center p-4">
+      <ThemeToggle />
       <div className="bg-white/5 backdrop-blur-xl p-8 rounded-3xl border border-white/10 text-center">
         <p className="text-slate-400">Data tidak tersedia.</p>
       </div>
@@ -305,16 +311,17 @@ function VerifyContent() {
 
   // TAMPILAN 5: SUKSES (PREMIUM)
   return (
-    <div className="min-h-screen bg-slate-950 relative overflow-hidden font-sans">
+    <div className={`min-h-screen relative overflow-hidden font-sans transition-colors duration-500 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+      <ThemeToggle />
       {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-emerald-950/20 to-slate-950" />
-      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl" />
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:50px_50px]" />
+      <div className={`absolute inset-0 transition-colors duration-500 ${isDark ? 'bg-gradient-to-br from-slate-950 via-emerald-950/20 to-slate-950' : 'bg-gradient-to-br from-slate-50 via-emerald-50/50 to-slate-50'}`} />
+      <div className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-400/20'}`} />
+      <div className={`absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl ${isDark ? 'bg-teal-500/10' : 'bg-teal-400/20'}`} />
+      <div className={`absolute inset-0 bg-[size:50px_50px] ${isDark ? 'bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)]' : 'bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)]'}`} />
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen p-4 flex justify-center items-center">
-        <div className="bg-white/5 backdrop-blur-xl w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-white/10">
+      <div className={`relative z-10 min-h-screen p-4 flex justify-center items-center ${isDark ? 'text-white' : 'text-slate-800'}`}>
+        <div className={`backdrop-blur-xl w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border transition-all ${isDark ? 'bg-white/5 border-white/10' : 'bg-white/70 border-slate-200'}`}>
 
           {/* Header - Verified Badge */}
           <header className="relative p-8 text-center overflow-hidden">
@@ -325,8 +332,8 @@ function VerifyContent() {
               <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/30">
                 <span className="text-4xl">✅</span>
               </div>
-              <h1 className="text-3xl font-black text-white tracking-tight">TERVERIFIKASI</h1>
-              <p className="text-emerald-300/80 text-xs font-medium mt-2 uppercase tracking-[0.3em]">Nusantara Batik Chain</p>
+              <h1 className={`text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>TERVERIFIKASI</h1>
+              <p className={`text-xs font-medium mt-2 uppercase tracking-[0.3em] ${isDark ? 'text-emerald-300/80' : 'text-emerald-600/80'}`}>Nusantara Batik Chain</p>
 
               {/* Verification Level Indicator - Dynamic */}
               <div className={`mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${data.verificationLevel === 'qr_signed'

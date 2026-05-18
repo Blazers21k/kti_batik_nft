@@ -3,6 +3,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(request) {
   try {
+    // Request Logging
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+    console.log(`📝 [${new Date().toISOString()}] ${ip} → POST /api/ai-preview`);
+
     // 1. Validasi API Key
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) {
