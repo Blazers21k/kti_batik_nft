@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { NextResponse } from "next/server";
+import METADATA_OVERRIDES from "../../config/metadata-overrides";
 
 // DECENTRALIZED: Alamat Admin Wallet yang PUBLIK
 // Siapapun bisa verify signature dengan address ini tanpa perlu server
@@ -152,6 +153,15 @@ export async function GET(request) {
     }
 
     console.log(`✅ Verifikasi Token #${tokenId} berhasil. Level: ${verificationLevel}`);
+
+    // 9. Apply metadata overrides jika ada
+    const override = METADATA_OVERRIDES[tokenId];
+    if (override) {
+      if (override.image) metadata.image = override.image;
+      if (override.name) metadata.name = override.name;
+      if (override.description) metadata.description = override.description;
+      console.log(`📝 Override applied untuk Token #${tokenId}`);
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { NextResponse } from "next/server";
+import METADATA_OVERRIDES from "../../config/metadata-overrides";
 
 export async function GET(request) {
     try {
@@ -107,11 +108,14 @@ export async function GET(request) {
                         }
                     }
 
+                    // Apply overrides jika ada
+                    const override = METADATA_OVERRIDES[tokenId.toString()];
+
                     return {
                         tokenId: tokenId.toString(),
-                        name: metadata.name || `Batik #${tokenId}`,
-                        description: metadata.description || "-",
-                        image: metadata.image || "",
+                        name: override?.name || metadata.name || `Batik #${tokenId}`,
+                        description: override?.description || metadata.description || "-",
+                        image: override?.image || metadata.image || "",
                         owner: owner,
                         nfcUid: nfcUid,
                         attributes: metadata.attributes || [],
