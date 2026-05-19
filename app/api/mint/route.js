@@ -99,7 +99,7 @@ export async function POST(request) {
     const ABI = ["function cetakSertifikat(address,string,string) public returns (uint256)"];
     const contract = new ethers.Contract(contractAddress, ABI, wallet);
 
-    console.log(`🚀 Mengestimasi gas untuk pencetakan NFT ${namaPengrajin}...`);
+    console.log(`Mengestimasi gas untuk pencetakan NFT ${namaPengrajin}...`);
 
     // 7. Estimasi Gas Dinamis dengan Safety Buffer
     let gasLimit;
@@ -159,7 +159,7 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error("💥 ERROR MINTING SERVICE:", error);
+    console.error("ERROR MINTING SERVICE:", error);
 
     // Deteksi error spesifik jika bisa
     let status = 500;

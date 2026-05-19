@@ -44,6 +44,8 @@ export default function Home() {
   const [isEstimating, setIsEstimating] = useState(false);
   const [ipfsUrl, setIpfsUrl] = useState(""); // IPFS URL untuk gambar
   const [isUploadingIPFS, setIsUploadingIPFS] = useState(false);
+  const [nfcCheck, setNfcCheck] = useState(null); // { isRegistered, tokenName, tokenId } | null
+  const [isCheckingNfc, setIsCheckingNfc] = useState(false);
 
   // Ref untuk timer cleanup
   const recognitionTimerRef = useRef(null);
@@ -175,8 +177,34 @@ export default function Home() {
     recognition.start();
   };
 
+  // Cek NFC UID di blockchain
+  const checkNfcOnChain = async (uid) => {
+    setIsCheckingNfc(true);
+    setNfcCheck(null);
+    try {
+      const res = await fetch(`/api/check-nfc?uid=${encodeURIComponent(uid)}`);
+      const data = await res.json();
+      if (data.success) {
+        setNfcCheck(data);
+        if (data.isRegistered) {
+          setStatus(`⚠️ NFC sudah terdaftar! (${data.tokenName || 'Token #' + data.tokenId})`);
+          setError(`NFC UID ini sudah dipakai untuk "${data.tokenName || 'Token #' + data.tokenId}". Gunakan NFC tag lain.`);
+        } else {
+          setStatus("✅ NFC tersedia — belum terdaftar di blockchain");
+          setError("");
+        }
+      }
+    } catch (err) {
+      console.warn("Gagal cek NFC:", err);
+      // Tidak block user jika check gagal, biarkan minting yang validasi
+      setStatus("✅ NFC Terbaca: " + uid + " (cek online gagal)");
+    }
+    setIsCheckingNfc(false);
+  };
+
   const scanNFC = async () => {
     setError("");
+    setNfcCheck(null);
     if (!("NDEFReader" in window)) {
       // PRODUCTION MODE: Tampilkan error jika tidak ada NFC
       setError("Perangkat ini tidak mendukung NFC. Gunakan smartphone dengan NFC untuk scan tag.");
@@ -186,10 +214,11 @@ export default function Home() {
       const ndef = new NDEFReader();
       await ndef.scan();
       setStatus("📡 Tempelkan NFC Tag ke perangkat...");
-      ndef.onreading = (event) => {
+      ndef.onreading = async (event) => {
         const uid = event.serialNumber;
         setForm((prev) => ({ ...prev, uidNFC: uid }));
-        setStatus("✅ NFC Terbaca: " + uid);
+        setStatus("🔍 Mengecek NFC di blockchain...");
+        await checkNfcOnChain(uid);
       };
     } catch (err) {
       setError("Gagal scan NFC: " + err.message);
@@ -463,11 +492,22 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={scanNFC}
-                  className={`relative group rounded-2xl flex flex-col items-center justify-center h-24 border-2 transition-all overflow-hidden ${form.uidNFC ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-white/5 border-white/10 text-white hover:border-cyan-500/50"}`}
+                  disabled={isCheckingNfc}
+                  className={`relative group rounded-2xl flex flex-col items-center justify-center h-24 border-2 transition-all overflow-hidden ${
+                    nfcCheck?.isRegistered
+                      ? "bg-red-500/10 border-red-500/30 text-red-400"
+                      : form.uidNFC
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                        : "bg-white/5 border-white/10 text-white hover:border-cyan-500/50"
+                  }`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className="relative text-2xl">{form.uidNFC ? "✅" : "📡"}</span>
-                  <p className="relative text-[10px] font-bold mt-1 uppercase tracking-wider">{form.uidNFC ? "NFC OK" : "SCAN NFC"}</p>
+                  <span className="relative text-2xl">
+                    {isCheckingNfc ? "⏳" : nfcCheck?.isRegistered ? "❌" : form.uidNFC ? "✅" : "📡"}
+                  </span>
+                  <p className="relative text-[10px] font-bold mt-1 uppercase tracking-wider">
+                    {isCheckingNfc ? "CEK..." : nfcCheck?.isRegistered ? "TERPAKAI" : form.uidNFC ? "NFC OK" : "SCAN NFC"}
+                  </p>
                 </button>
               </div>
 
@@ -477,7 +517,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={handleManualInput}
-                  disabled={isLoading}
+                  disabled={isLoading || nfcCheck?.isRegistered}
                   className="flex-1 p-4 bg-white/5 border border-white/10 text-slate-300 rounded-xl font-bold text-sm hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
                 >
                   ✍️ MANUAL
@@ -485,7 +525,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={handleGeneratePreview}
-                  disabled={isLoading}
+                  disabled={isLoading || nfcCheck?.isRegistered}
                   className="flex-[2] p-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.02] transition-all flex justify-center items-center gap-2 disabled:opacity-50"
                 >
                   {isAnalyzing ? <span className="animate-pulse">⏳ Berpikir...</span> : <>✨ ANALISIS AI</>}

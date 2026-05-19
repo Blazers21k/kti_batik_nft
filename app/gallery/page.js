@@ -31,9 +31,53 @@ const formatDate = (dateString) => {
 
 // Komponen Card NFT
 const NFTCard = ({ nft }) => {
+    const [nfcStatus, setNfcStatus] = useState("");
+    const [isWriting, setIsWriting] = useState(false);
+
     const getAttribute = (traitType) => {
         const attr = nft.attributes?.find(a => a.trait_type === traitType);
         return attr ? attr.value : "-";
+    };
+
+    // Write/Rewrite verify URL ke NFC tag
+    const handleWriteNFC = async () => {
+        if (!("NDEFReader" in window)) {
+            setNfcStatus("❌ Perangkat tidak mendukung NFC");
+            return;
+        }
+
+        setIsWriting(true);
+        setNfcStatus("🔄 Generating signed URL...");
+
+        try {
+            // 1. Re-generate signed verify URL dari backend
+            const res = await fetch("/api/nfc-rewrite", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tokenId: nft.tokenId })
+            });
+            const data = await res.json();
+
+            if (!data.success) {
+                setNfcStatus("❌ " + data.error);
+                setIsWriting(false);
+                return;
+            }
+
+            // 2. Write ke NFC tag
+            setNfcStatus("📡 Tempelkan NFC Tag...");
+            const ndef = new NDEFReader();
+            const fullUrl = window.location.origin + data.verifyUrl;
+            await ndef.write({
+                records: [{ recordType: "url", data: fullUrl }]
+            });
+
+            setNfcStatus("✅ Berhasil ditulis ke NFC!");
+        } catch (err) {
+            console.error("NFC Write Error:", err);
+            setNfcStatus("❌ Gagal: " + err.message);
+        }
+        setIsWriting(false);
     };
 
     return (
@@ -96,14 +140,28 @@ const NFTCard = ({ nft }) => {
                     </p>
                 </div>
 
+                {/* NFC Write Status */}
+                {nfcStatus && (
+                    <div className={`p-2 rounded-lg text-[10px] text-center font-medium ${nfcStatus.includes("✅") ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : nfcStatus.includes("❌") ? "bg-red-500/10 border border-red-500/20 text-red-400" : "bg-blue-500/10 border border-blue-500/20 text-blue-400"}`}>
+                        {nfcStatus}
+                    </div>
+                )}
+
                 {/* Actions */}
                 <div className="flex gap-2 pt-2">
                     <Link
                         href={nft.verifyUrl}
                         className="flex-1 text-center py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold rounded-xl hover:shadow-lg hover:shadow-emerald-500/30 transition-all"
                     >
-                        🔍 LIHAT DETAIL
+                        🔍 DETAIL
                     </Link>
+                    <button
+                        onClick={handleWriteNFC}
+                        disabled={isWriting}
+                        className="flex-1 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white text-xs font-bold rounded-xl hover:shadow-lg hover:shadow-blue-500/30 transition-all disabled:opacity-50"
+                    >
+                        {isWriting ? "⏳..." : "📡 WRITE NFC"}
+                    </button>
                 </div>
             </div>
         </div>

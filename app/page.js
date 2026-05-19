@@ -127,6 +127,30 @@ export default function LandingPage() {
             </div>
           </Link>
 
+          {/* Card: Gallery */}
+          <Link href="/gallery" className="group relative block">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className={`relative p-6 md:p-8 backdrop-blur-xl rounded-2xl border transition-all duration-300 overflow-hidden ${isDark ? 'bg-white/5 border-white/10 group-hover:border-emerald-500/30 group-hover:bg-white/10' : 'bg-white/60 border-slate-200 group-hover:border-emerald-400 group-hover:bg-white/80 shadow-sm group-hover:shadow-md'}`}>
+              <div className={`absolute inset-0 bg-gradient-to-r from-transparent to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ${isDark ? 'via-white/5' : 'via-black/[0.02]'}`} />
+              <div className="relative flex items-center gap-5">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                  <span className="text-3xl">🖼️</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className={`font-bold text-xl md:text-2xl transition-colors ${isDark ? 'text-white group-hover:text-emerald-100' : 'text-slate-800 group-hover:text-emerald-700'}`}>
+                    Gallery Sertifikat
+                  </h3>
+                  <p className={`text-sm mt-1 transition-colors ${isDark ? 'text-slate-400 group-hover:text-slate-300' : 'text-slate-500 group-hover:text-slate-600'}`}>
+                    Koleksi NFT & Write NFC Tag
+                  </p>
+                </div>
+                <div className={`text-2xl transition-all duration-300 group-hover:translate-x-2 ${isDark ? 'text-emerald-500/50 group-hover:text-emerald-400' : 'text-emerald-400/50 group-hover:text-emerald-600'}`}>
+                  →
+                </div>
+              </div>
+            </div>
+          </Link>
+
           {/* Card: Portal Pengrajin — hidden for now, enable when ready */}
           {false && (
           <Link href="/login" className="group relative block">
