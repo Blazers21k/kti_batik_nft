@@ -122,11 +122,7 @@ const NFTCard = ({ nft }) => {
                 </p>
 
                 {/* Attributes */}
-                <div className="grid grid-cols-2 gap-2 text-[10px]">
-                    <div className="bg-white/5 p-2 rounded-lg">
-                        <p className="text-slate-500">Verifikator</p>
-                        <p className="text-white font-medium truncate">{getAttribute("Verified By")}</p>
-                    </div>
+                <div className="text-[10px]">
                     <div className="bg-white/5 p-2 rounded-lg">
                         <p className="text-slate-500">Tanggal</p>
                         <p className="text-white font-medium">{formatDate(getAttribute("Date"))}</p>

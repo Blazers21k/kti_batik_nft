@@ -410,18 +410,6 @@ function VerifyContent() {
               </div>
             </div>
 
-            {/* Jejak Audit (Verifikator) */}
-            <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20 flex items-center gap-4">
-              <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center text-xl">👮</div>
-              <div>
-                <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Diverifikasi Oleh</p>
-                <p className="text-sm font-bold text-white">{getAttribute("Verified By")}</p>
-                <p className="text-[10px] text-amber-300/60 font-mono mt-0.5">
-                  {formatDate(getAttribute("Date"))}
-                </p>
-              </div>
-            </div>
-
             {/* NFC Verification Notice - Dynamic based on verification level */}
             {data.verificationLevel === 'qr_signed' ? (
               <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20 text-center">
