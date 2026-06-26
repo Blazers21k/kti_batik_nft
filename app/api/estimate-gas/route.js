@@ -1,10 +1,20 @@
 import { ethers } from "ethers";
 import { NextResponse } from "next/server";
+import { enforceRateLimit, sanitizeInput, safeErrorResponse, validatePayloadSize } from "../../lib/security";
+import { getClientIP } from "../../lib/rate-limit";
 
 export async function POST(request) {
     try {
+        // Rate Limit: 10 estimasi per menit per IP
+        const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 10 });
+        if (rateLimitError) return rateLimitError;
+
+        // Validasi ukuran payload
+        const payloadError = await validatePayloadSize(request, 10 * 1024 * 1024);
+        if (payloadError) return payloadError;
+
         // Request Logging
-        const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+        const ip = getClientIP(request);
         console.log(`📝 [${new Date().toISOString()}] ${ip} → POST /api/estimate-gas`);
 
         const privateKey = process.env.ADMIN_PRIVATE_KEY;
@@ -16,7 +26,11 @@ export async function POST(request) {
         }
 
         const body = await request.json().catch(() => ({}));
-        const { namaPengrajin, uidNFC, finalDescription, imageBase64, ipfsUrl } = body;
+        const namaPengrajin = sanitizeInput(body.namaPengrajin, 200);
+        const uidNFC = sanitizeInput(body.uidNFC, 100);
+        const finalDescription = sanitizeInput(body.finalDescription, 10000);
+        const ipfsUrl = sanitizeInput(body.ipfsUrl, 500);
+        const imageBase64 = body.imageBase64;
 
         if (!uidNFC || !finalDescription || (!imageBase64 && !ipfsUrl)) {
             return NextResponse.json({ error: "Data tidak lengkap untuk estimasi" }, { status: 400 });
@@ -41,7 +55,6 @@ export async function POST(request) {
         };
 
         // Jika pakai IPFS, simulasi tokenURI pendek untuk estimasi akurat
-        // IPFS hash biasanya 46 karakter, jadi tokenURI ~60 bytes
         const PINATA_API_KEY = process.env.PINATA_API_KEY;
         const PINATA_SECRET_KEY = process.env.PINATA_SECRET_KEY;
 
@@ -84,10 +97,6 @@ export async function POST(request) {
         });
 
     } catch (error) {
-        console.error("Estimasi Gas Error:", error);
-        return NextResponse.json({
-            error: "Gagal estimasi: " + (error.message || "Error tidak diketahui"),
-            suggestion: "Pastikan data lengkap dan benar"
-        }, { status: 500 });
+        return safeErrorResponse(error, "Gagal estimasi gas. Pastikan data lengkap dan benar.");
     }
 }

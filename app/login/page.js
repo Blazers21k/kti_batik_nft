@@ -5,10 +5,11 @@ import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ nama: "", kodeAkses: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Login User (email + password)
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -18,7 +19,10 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+        }),
       });
 
       const data = await res.json();
@@ -29,13 +33,9 @@ export default function LoginPage() {
         return;
       }
 
-      // Simpan session
-      sessionStorage.setItem("pengrajin_session", JSON.stringify({
-        nama: data.nama,
-        alamat: data.alamat,
-        loginAt: new Date().toISOString(),
-        totalKarya: data.totalKarya,
-      }));
+      // Simpan token dan user data di localStorage
+      localStorage.setItem("user_token", data.token);
+      localStorage.setItem("user_data", JSON.stringify(data.user));
 
       router.push("/dashboard");
     } catch (err) {
@@ -72,7 +72,7 @@ export default function LoginPage() {
             </div>
             <h1 className="text-3xl font-bold">
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-200 to-teal-400">
-                Portal Pengrajin
+                Masuk
               </span>
             </h1>
             <p className="text-slate-400 text-sm mt-2">
@@ -80,40 +80,44 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Form Card */}
+          {/* Login Form */}
           <form onSubmit={handleLogin} className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-8 space-y-6">
 
-            {/* Nama Pengrajin */}
+            {/* Info untuk pengrajin baru */}
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+              <p className="text-xs text-emerald-300 text-center leading-relaxed">
+                🎨 <strong>Pengrajin baru?</strong> Daftar akun dulu, lalu Anda bisa langsung masuk ke Area Pengrajin untuk mendaftarkan karya batik.
+              </p>
+            </div>
+
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Nama Pengrajin
+                Email
               </label>
               <input
-                type="text"
-                value={form.nama}
-                onChange={(e) => setForm({ ...form, nama: e.target.value })}
-                placeholder="Masukkan nama yang terdaftar"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="contoh@email.com"
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all"
                 required
               />
             </div>
 
-            {/* Kode Akses */}
+            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Kode Akses
+                Password
               </label>
               <input
                 type="password"
-                value={form.kodeAkses}
-                onChange={(e) => setForm({ ...form, kodeAkses: e.target.value })}
-                placeholder="Masukkan kode akses Anda"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="Masukkan password Anda"
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all"
                 required
               />
-              <p className="text-xs text-slate-500 mt-2">
-                Kode akses diberikan saat pertama kali mendaftarkan karya
-              </p>
             </div>
 
             {/* Error */}
@@ -140,18 +144,18 @@ export default function LoginPage() {
               ) : (
                 <>
                   <span>🔓</span>
-                  <span>Masuk ke Portal</span>
+                  <span>Masuk</span>
                 </>
               )}
             </button>
           </form>
 
-          {/* Info */}
+          {/* Links */}
           <div className="mt-6 p-4 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10">
             <p className="text-xs text-slate-400 text-center">
-              <span className="text-amber-400">ℹ️</span> Belum punya akun? Kode akses otomatis dibuat saat Anda mendaftarkan karya pertama di{" "}
-              <Link href="/pengrajin" className="text-amber-400 hover:text-amber-300 underline">
-                Area Pengrajin
+              <span className="text-amber-400">📝</span> Belum punya akun?{" "}
+              <Link href="/register" className="text-amber-400 hover:text-amber-300 underline font-medium">
+                Daftar di sini
               </Link>
             </p>
           </div>
@@ -159,7 +163,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="mt-8 text-slate-600 text-xs font-mono text-center">
-          Nusantara Batik Chain • Portal Pengrajin
+          Nusantara Batik Chain • Portal Akses Aman
         </p>
       </div>
     </div>

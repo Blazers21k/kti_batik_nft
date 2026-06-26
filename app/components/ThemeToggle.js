@@ -20,7 +20,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className={`fixed top-5 right-5 z-[100] w-12 h-12 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-110 active:scale-95 shadow-lg flex items-center justify-center ${isDark ? "bg-white/10 border-white/20 text-yellow-300 hover:bg-white/20" : "bg-black/5 border-black/10 text-indigo-600 hover:bg-black/10"}`}
+      className={`fixed top-5 left-5 z-[100] w-12 h-12 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-110 active:scale-95 shadow-lg flex items-center justify-center ${isDark ? "bg-white/10 border-white/20 text-yellow-300 hover:bg-white/20" : "bg-black/5 border-black/10 text-indigo-600 hover:bg-black/10"}`}
       aria-label="Toggle theme"
     >
       {isDark ? (

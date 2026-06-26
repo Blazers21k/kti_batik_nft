@@ -1,11 +1,17 @@
 import { ethers } from "ethers";
 import { NextResponse } from "next/server";
 import METADATA_OVERRIDES from "../../config/metadata-overrides";
+import { enforceRateLimit, sanitizeInput, safeErrorResponse } from "../../lib/security";
+import { getClientIP } from "../../lib/rate-limit";
 
 export async function GET(request) {
     try {
+        // Rate Limit: 20 request per menit per IP
+        const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 20 });
+        if (rateLimitError) return rateLimitError;
+
         // Request Logging
-        const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+        const ip = getClientIP(request);
         console.log(`📝 [${new Date().toISOString()}] ${ip} → GET /api/gallery`);
 
         // 1. Validasi Konfigurasi
@@ -62,13 +68,11 @@ export async function GET(request) {
             console.log("ℹ️ totalSupply tidak tersedia, mencoba method alternatif...");
 
             // Method 2: Scan sequential token IDs (1-50)
-            // Ini akan bekerja untuk kontrak non-enumerable
             for (let tokenId = 1; tokenId <= 50; tokenId++) {
                 try {
                     await contract.ownerOf(tokenId);
                     tokens.push(tokenId);
                 } catch {
-                    // Token tidak exist, lanjut
                     continue;
                 }
             }
@@ -92,6 +96,17 @@ export async function GET(request) {
                         const base64Data = uri.split(",")[1];
                         const jsonString = Buffer.from(base64Data, 'base64').toString('utf-8');
                         metadata = JSON.parse(jsonString);
+                    } else if (uri.startsWith("ipfs://") || uri.startsWith("https://")) {
+                        // BUG-3 FIX: Fetch metadata dari IPFS gateway
+                        try {
+                            const cleanUrl = uri.replace("ipfs://", "https://ipfs.io/ipfs/");
+                            const res = await fetch(cleanUrl, {
+                                signal: AbortSignal.timeout(8000) // Timeout 8 detik
+                            });
+                            metadata = await res.json();
+                        } catch (fetchErr) {
+                            console.warn(`⚠️ Gagal fetch IPFS metadata token #${tokenId}:`, fetchErr.message);
+                        }
                     }
 
                     // Ambil NFC UID
@@ -131,9 +146,9 @@ export async function GET(request) {
         // Filter null values
         const validNfts = nfts.filter(n => n !== null);
 
-        // Filter by pengrajin name if provided
+        // Filter by pengrajin name if provided (dengan sanitasi)
         const { searchParams } = new URL(request.url);
-        const pengrajinFilter = searchParams.get("pengrajin");
+        const pengrajinFilter = sanitizeInput(searchParams.get("pengrajin"), 200);
 
         let filteredNfts = validNfts;
         if (pengrajinFilter) {
@@ -159,10 +174,6 @@ export async function GET(request) {
         });
 
     } catch (error) {
-        console.error("💥 Gallery API Error:", error);
-        return NextResponse.json(
-            { error: "Gagal mengambil data gallery: " + error.message },
-            { status: 500 }
-        );
+        return safeErrorResponse(error, "Gagal mengambil data gallery.");
     }
 }

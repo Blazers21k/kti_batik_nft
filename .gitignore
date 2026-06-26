@@ -45,3 +45,6 @@ agent.md
 
 # ui previews (development only)
 ui-preview*.html
+
+# user data (JANGAN commit! berisi hash password dan session)
+/data/users.json

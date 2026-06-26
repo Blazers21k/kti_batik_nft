@@ -1,30 +1,85 @@
 import { NextResponse } from "next/server";
 import { ethers } from "ethers";
+import { enforceRateLimit, sanitizeInput, safeErrorResponse } from "../../../lib/security";
+import { getClientIP } from "../../../lib/rate-limit";
+import { authenticateUser } from "../../../lib/auth";
 
-// Daftar pengrajin terdaftar
-// Dalam production, ini bisa dari database
-// Untuk demo, kita generate dari data blockchain
-const REGISTERED_PENGRAJIN = {};
+// ═══════════════════════════════════════
+// KODE AKSES PENGRAJIN — Legacy System
+// ═══════════════════════════════════════
+
+function generateAccessCode(nama, salt) {
+  const input = `${nama.toLowerCase().trim()}:${salt || "NBC-DEFAULT-SALT"}`;
+  const hash = ethers.keccak256(ethers.toUtf8Bytes(input));
+  const code = parseInt(hash.slice(2, 10), 16) % 1000000;
+  return code.toString().padStart(6, "0");
+}
+
+// ═══════════════════════════════════════
+// POST /api/auth/login — Login (Dual Mode)
+// ═══════════════════════════════════════
 
 export async function POST(request) {
   try {
-    // Request Logging
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+    // Rate Limit: 10 percobaan login per menit per IP
+    const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 10 });
+    if (rateLimitError) return rateLimitError;
+
+    const ip = getClientIP(request);
     console.log(`📝 [${new Date().toISOString()}] ${ip} → POST /api/auth/login`);
 
-    const { nama, kodeAkses } = await request.json();
+    const body = await request.json().catch(() => ({}));
+
+    // ═══════════════════════════════════
+    // MODE 1: Login User (email + password)
+    // ═══════════════════════════════════
+    if (body.email && body.password) {
+      const email = sanitizeInput(body.email, 200);
+      const password = body.password;
+
+      if (!email || !password) {
+        return NextResponse.json(
+          { error: "Email dan password harus diisi" },
+          { status: 400 }
+        );
+      }
+
+      const result = await authenticateUser(email, password);
+
+      if (!result.success) {
+        return NextResponse.json(
+          { error: result.error },
+          { status: 401 }
+        );
+      }
+
+      console.log(`✅ Login user berhasil: ${result.user.email}`);
+
+      return NextResponse.json({
+        success: true,
+        mode: "user",
+        user: result.user,
+        token: result.token,
+        message: "Login berhasil",
+      });
+    }
+
+    // ═══════════════════════════════════
+    // MODE 2: Login Pengrajin (nama + kodeAkses)
+    // ═══════════════════════════════════
+    const nama = sanitizeInput(body.nama, 100);
+    const kodeAkses = sanitizeInput(body.kodeAkses, 10);
 
     if (!nama || !kodeAkses) {
       return NextResponse.json(
-        { error: "Nama dan kode akses harus diisi" },
+        { error: "Data login tidak lengkap" },
         { status: 400 }
       );
     }
 
-    // Verifikasi kode akses
-    // Kode akses = hash(nama + admin_address) -> 6 digit
-    const adminAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-    const expectedCode = generateAccessCode(nama, adminAddress);
+    // Verifikasi kode akses pengrajin
+    const salt = process.env.ADMIN_API_SECRET;
+    const expectedCode = generateAccessCode(nama, salt);
 
     if (kodeAkses !== expectedCode) {
       return NextResponse.json(
@@ -33,7 +88,7 @@ export async function POST(request) {
       );
     }
 
-    // Query blockchain untuk menghitung total karya
+    // Query blockchain untuk total karya
     let totalKarya = 0;
     try {
       const alchemyUrl = process.env.ALCHEMY_RPC_URL;
@@ -46,72 +101,51 @@ export async function POST(request) {
           "function tokenURI(uint256 tokenId) view returns (string)"
         ];
         const contract = new ethers.Contract(contractAddress, abi, provider);
-
         const total = await contract.totalSupply();
-        const totalNum = Number(total);
-
-        // Check each token for matching pengrajin name
-        for (let i = 1; i <= totalNum; i++) {
-          try {
-            const uri = await contract.tokenURI(i);
-            // Parse metadata to check pengrajin name
-            if (uri.includes("ipfs") || uri.startsWith("http")) {
-              // Will be checked on frontend via gallery API
-            }
-          } catch (e) {
-            // Token might not exist, skip
-          }
-        }
-        totalKarya = totalNum; // Approximate, frontend will filter
+        totalKarya = Number(total);
       }
     } catch (e) {
       console.log("Blockchain query failed:", e.message);
     }
 
-    console.log(`✅ Login berhasil: ${nama}`);
+    console.log(`✅ Login pengrajin berhasil: ${nama}`);
 
     return NextResponse.json({
       success: true,
+      mode: "pengrajin",
       nama: nama,
       alamat: "-",
       totalKarya: totalKarya,
-      message: "Login berhasil"
+      message: "Login berhasil",
     });
 
   } catch (error) {
-    console.error("Login error:", error);
-    return NextResponse.json(
-      { error: "Terjadi kesalahan server" },
-      { status: 500 }
-    );
+    return safeErrorResponse(error, "Terjadi kesalahan saat login.");
   }
 }
 
-// Generate kode akses deterministic dari nama pengrajin
-function generateAccessCode(nama, contractAddress) {
-  const input = `${nama.toLowerCase().trim()}:${contractAddress || "NBC"}`;
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    const char = input.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  // Ambil 6 digit positif
-  const code = Math.abs(hash % 1000000).toString().padStart(6, '0');
-  return code;
-}
+// ═══════════════════════════════════════
+// GET /api/auth/login — Generate Kode Akses (Admin Only)
+// ═══════════════════════════════════════
 
-// GET endpoint untuk generate kode akses (admin only)
 export async function GET(request) {
-  const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+  const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 5 });
+  if (rateLimitError) return rateLimitError;
+
+  const ip = getClientIP(request);
   console.log(`📝 [${new Date().toISOString()}] ${ip} → GET /api/auth/login`);
 
   const { searchParams } = new URL(request.url);
   const nama = searchParams.get("nama");
   const adminKey = searchParams.get("key");
 
-  // Proteksi: hanya admin yang bisa generate kode
-  if (adminKey !== process.env.ADMIN_PRIVATE_KEY?.slice(-8)) {
+  const adminSecret = process.env.ADMIN_API_SECRET;
+
+  if (!adminSecret) {
+    return safeErrorResponse(null, "Konfigurasi admin belum lengkap.", 500);
+  }
+
+  if (adminKey !== adminSecret) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 403 }
@@ -125,8 +159,8 @@ export async function GET(request) {
     );
   }
 
-  const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-  const code = generateAccessCode(nama, contractAddress);
+  const salt = process.env.ADMIN_API_SECRET;
+  const code = generateAccessCode(nama, salt);
 
   return NextResponse.json({
     nama: nama,

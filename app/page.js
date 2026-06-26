@@ -1,9 +1,12 @@
 "use client";
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import AccountButton from './components/AccountButton';
 
 export default function LandingPage() {
   const [isDark, setIsDark] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const saved = localStorage.getItem('nbc-theme');
@@ -14,6 +17,17 @@ export default function LandingPage() {
     const next = !isDark;
     setIsDark(next);
     localStorage.setItem('nbc-theme', next ? 'dark' : 'light');
+  };
+
+  // Cek auth sebelum masuk area pengrajin
+  const handlePengrajinClick = () => {
+    const userToken = localStorage.getItem('user_token');
+
+    if (userToken) {
+      router.push('/pengrajin');
+    } else {
+      router.push('/login');
+    }
   };
 
   return (
@@ -30,10 +44,10 @@ export default function LandingPage() {
       {/* Grid Pattern Overlay */}
       <div className={`absolute inset-0 bg-[linear-gradient(rgba(${isDark ? '255,255,255' : '0,0,0'},${isDark ? '0.02' : '0.03'})_1px,transparent_1px),linear-gradient(90deg,rgba(${isDark ? '255,255,255' : '0,0,0'},${isDark ? '0.02' : '0.03'})_1px,transparent_1px)] bg-[size:60px_60px]`} />
 
-      {/* Theme Toggle */}
+      {/* Theme Toggle — Kiri Atas */}
       <button
         onClick={toggleTheme}
-        className={`fixed top-5 right-5 z-[100] w-12 h-12 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-110 active:scale-95 shadow-lg flex items-center justify-center ${isDark ? 'bg-white/10 border-white/20 text-yellow-300 hover:bg-white/20' : 'bg-black/5 border-black/10 text-indigo-600 hover:bg-black/10'}`}
+        className={`fixed top-5 left-5 z-[100] w-12 h-12 rounded-full backdrop-blur-xl border transition-all duration-300 hover:scale-110 active:scale-95 shadow-lg flex items-center justify-center ${isDark ? 'bg-white/10 border-white/20 text-yellow-300 hover:bg-white/20' : 'bg-black/5 border-black/10 text-indigo-600 hover:bg-black/10'}`}
         aria-label="Toggle theme"
       >
         {isDark ? (
@@ -54,6 +68,9 @@ export default function LandingPage() {
           </svg>
         )}
       </button>
+
+      {/* Account Button — Kanan Atas */}
+      <AccountButton />
 
       {/* Main Content */}
       <div className={`relative z-10 min-h-screen flex flex-col justify-center items-center p-6 transition-colors duration-500 ${isDark ? 'text-white' : 'text-slate-800'}`}>
@@ -80,7 +97,7 @@ export default function LandingPage() {
         <div className="grid gap-6 w-full max-w-lg">
 
           {/* Card: Pengrajin */}
-          <Link href="/pengrajin" className="group relative block">
+          <div onClick={handlePengrajinClick} className="group relative block cursor-pointer">
             <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className={`relative p-6 md:p-8 backdrop-blur-xl rounded-2xl border transition-all duration-300 overflow-hidden ${isDark ? 'bg-white/5 border-white/10 group-hover:border-amber-500/30 group-hover:bg-white/10' : 'bg-white/60 border-slate-200 group-hover:border-amber-400 group-hover:bg-white/80 shadow-sm group-hover:shadow-md'}`}>
               <div className={`absolute inset-0 bg-gradient-to-r from-transparent to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ${isDark ? 'via-white/5' : 'via-black/[0.02]'}`} />
@@ -101,7 +118,7 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
-          </Link>
+          </div>
 
           {/* Card: Verifikasi */}
           <Link href="/verify" className="group relative block">
@@ -151,31 +168,29 @@ export default function LandingPage() {
             </div>
           </Link>
 
-          {/* Card: Portal Pengrajin — hidden for now, enable when ready */}
-          {false && (
+          {/* Card: Login / Daftar Akun */}
           <Link href="/login" className="group relative block">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-green-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className={`relative p-6 md:p-8 backdrop-blur-xl rounded-2xl border transition-all duration-300 overflow-hidden ${isDark ? 'bg-white/5 border-white/10 group-hover:border-emerald-500/30 group-hover:bg-white/10' : 'bg-white/60 border-slate-200 group-hover:border-emerald-400 group-hover:bg-white/80 shadow-sm group-hover:shadow-md'}`}>
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className={`relative p-6 md:p-8 backdrop-blur-xl rounded-2xl border transition-all duration-300 overflow-hidden ${isDark ? 'bg-white/5 border-white/10 group-hover:border-indigo-500/30 group-hover:bg-white/10' : 'bg-white/60 border-slate-200 group-hover:border-indigo-400 group-hover:bg-white/80 shadow-sm group-hover:shadow-md'}`}>
               <div className={`absolute inset-0 bg-gradient-to-r from-transparent to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ${isDark ? 'via-white/5' : 'via-black/[0.02]'}`} />
               <div className="relative flex items-center gap-5">
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
                   <span className="text-3xl">🔐</span>
                 </div>
                 <div className="flex-1 text-left">
-                  <h3 className={`font-bold text-xl md:text-2xl transition-colors ${isDark ? 'text-white group-hover:text-emerald-100' : 'text-slate-800 group-hover:text-emerald-700'}`}>
-                    Portal Pengrajin
+                  <h3 className={`font-bold text-xl md:text-2xl transition-colors ${isDark ? 'text-white group-hover:text-indigo-100' : 'text-slate-800 group-hover:text-indigo-700'}`}>
+                    Login / Daftar
                   </h3>
                   <p className={`text-sm mt-1 transition-colors ${isDark ? 'text-slate-400 group-hover:text-slate-300' : 'text-slate-500 group-hover:text-slate-600'}`}>
-                    Login & Lihat Karya Tersertifikasi
+                    Masuk atau Buat Akun Baru
                   </p>
                 </div>
-                <div className={`text-2xl transition-all duration-300 group-hover:translate-x-2 ${isDark ? 'text-emerald-500/50 group-hover:text-emerald-400' : 'text-emerald-400/50 group-hover:text-emerald-600'}`}>
+                <div className={`text-2xl transition-all duration-300 group-hover:translate-x-2 ${isDark ? 'text-indigo-500/50 group-hover:text-indigo-400' : 'text-indigo-400/50 group-hover:text-indigo-600'}`}>
                   →
                 </div>
               </div>
             </div>
           </Link>
-          )}
         </div>
 
         {/* Trust Badges */}

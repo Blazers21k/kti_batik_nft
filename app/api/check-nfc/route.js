@@ -1,5 +1,7 @@
 import { ethers } from "ethers";
 import { NextResponse } from "next/server";
+import { enforceRateLimit, sanitizeInput, safeErrorResponse } from "../../lib/security";
+import { getClientIP } from "../../lib/rate-limit";
 
 /**
  * GET /api/check-nfc?uid=04:db:2c:55:bb:2a:81
@@ -7,11 +9,15 @@ import { NextResponse } from "next/server";
  */
 export async function GET(request) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+    // Rate Limit: 20 check per menit per IP
+    const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 20 });
+    if (rateLimitError) return rateLimitError;
+
+    const ip = getClientIP(request);
     console.log(`📝 [${new Date().toISOString()}] ${ip} → GET /api/check-nfc`);
 
     const { searchParams } = new URL(request.url);
-    const uid = searchParams.get("uid");
+    const uid = sanitizeInput(searchParams.get("uid"), 100);
 
     if (!uid) {
       return NextResponse.json({ error: "NFC UID wajib disertakan." }, { status: 400 });
@@ -103,10 +109,6 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    console.error("💥 Check NFC Error:", error);
-    return NextResponse.json(
-      { error: "Gagal cek NFC: " + (error.message || "Error") },
-      { status: 500 }
-    );
+    return safeErrorResponse(error, "Gagal cek NFC. Silakan coba lagi.");
   }
 }

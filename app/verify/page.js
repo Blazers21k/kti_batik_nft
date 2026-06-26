@@ -32,6 +32,30 @@ const formatDate = (dateString) => {
   }
 };
 
+// SEDANG-4 FIX: Safe image component — menggunakan React state, bukan innerHTML
+const ImageWithFallback = ({ src, alt }) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className="relative w-full h-48 bg-white/5 rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center">
+        <p className="text-slate-500 text-sm">📷 Gambar tidak tersedia</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-48 bg-white/5 rounded-2xl overflow-hidden border border-white/10">
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover"
+        onError={() => setHasError(true)}
+      />
+    </div>
+  );
+};
+
 function VerifyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -192,7 +216,7 @@ function VerifyContent() {
         setError("Gagal menghubungi server.");
         setLoading(false);
       });
-  }, [id]);
+  }, [id, sig]);
 
   // TAMPILAN 1: BELUM ADA ID - dengan QR Scanner
   if (!id) return (
@@ -369,21 +393,14 @@ function VerifyContent() {
 
             {/* Gambar Batik */}
             {data.metadata.image && (
-              <div className="relative w-full h-48 bg-white/5 rounded-2xl overflow-hidden border border-white/10">
-                <img
-                  src={
-                    data.metadata.image.startsWith('ipfs://')
-                      ? `https://gateway.pinata.cloud/ipfs/${data.metadata.image.replace('ipfs://', '')}`
-                      : data.metadata.image
-                  }
-                  alt={data.metadata.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = '<p class="flex items-center justify-center h-full text-slate-500 text-sm">📷 Gambar tidak tersedia</p>';
-                  }}
-                />
-              </div>
+              <ImageWithFallback
+                src={
+                  data.metadata.image.startsWith('ipfs://')
+                    ? `https://gateway.pinata.cloud/ipfs/${data.metadata.image.replace('ipfs://', '')}`
+                    : data.metadata.image
+                }
+                alt={data.metadata.name}
+              />
             )}
 
             {/* Deskripsi AI */}

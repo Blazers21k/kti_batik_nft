@@ -1,5 +1,7 @@
 import { ethers } from "ethers";
 import { NextResponse } from "next/server";
+import { enforceRateLimit, sanitizeInput, safeErrorResponse } from "../../lib/security";
+import { getClientIP } from "../../lib/rate-limit";
 
 /**
  * POST /api/nfc-rewrite
@@ -11,7 +13,11 @@ import { NextResponse } from "next/server";
  */
 export async function POST(request) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+    // TINGGI-3: Rate Limit — Re-sign sensitif, batasi 3 per menit
+    const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 3 });
+    if (rateLimitError) return rateLimitError;
+
+    const ip = getClientIP(request);
     console.log(`📝 [${new Date().toISOString()}] ${ip} → POST /api/nfc-rewrite`);
 
     // 1. Validasi konfigurasi
@@ -26,9 +32,10 @@ export async function POST(request) {
       );
     }
 
-    // 2. Ambil input
+    // 2. Ambil input (dengan sanitasi)
     const body = await request.json().catch(() => ({}));
-    const { tokenId, nfcUid } = body;
+    const tokenId = sanitizeInput(body.tokenId, 20);
+    const nfcUid = sanitizeInput(body.nfcUid, 100);
 
     if (!tokenId && !nfcUid) {
       return NextResponse.json(
@@ -135,10 +142,6 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error("💥 NFC Rewrite Error:", error);
-    return NextResponse.json(
-      { error: "Gagal re-generate: " + (error.message || "Error tidak diketahui") },
-      { status: 500 }
-    );
+    return safeErrorResponse(error, "Gagal re-generate signature.");
   }
 }

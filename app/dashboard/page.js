@@ -11,19 +11,49 @@ export default function DashboardPage() {
   const [selectedKarya, setSelectedKarya] = useState(null);
 
   useEffect(() => {
-    // Cek session
-    const stored = sessionStorage.getItem("pengrajin_session");
-    if (!stored) {
-      router.push("/login");
-      return;
+    checkSession();
+  }, []);
+
+  const checkSession = async () => {
+    const token = localStorage.getItem("user_token");
+    const userData = localStorage.getItem("user_data");
+
+    if (token && userData) {
+      try {
+        const res = await fetch("/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setSession({
+            nama: data.user.nama,
+            email: data.user.email,
+          });
+          fetchKarya(data.user.nama);
+          return;
+        } else {
+          // Session expired, hapus token
+          localStorage.removeItem("user_token");
+          localStorage.removeItem("user_data");
+        }
+      } catch {
+        // Network error, coba pakai cached data
+        try {
+          const cached = JSON.parse(userData);
+          setSession({ nama: cached.nama, email: cached.email });
+          fetchKarya(cached.nama);
+          return;
+        } catch {
+          localStorage.removeItem("user_token");
+          localStorage.removeItem("user_data");
+        }
+      }
     }
 
-    const parsed = JSON.parse(stored);
-    setSession(parsed);
-
-    // Fetch karya pengrajin
-    fetchKarya(parsed.nama);
-  }, []);
+    // Tidak ada session, redirect ke login
+    router.push("/login");
+  };
 
   const fetchKarya = async (nama) => {
     try {
@@ -39,8 +69,16 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("pengrajin_session");
+  const handleLogout = async () => {
+    const token = localStorage.getItem("user_token");
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {}
+    localStorage.removeItem("user_token");
+    localStorage.removeItem("user_data");
     router.push("/login");
   };
 
@@ -67,8 +105,13 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm font-medium text-emerald-400">{session.nama}</p>
-              <p className="text-xs text-slate-500">Pengrajin Terdaftar</p>
+              <p className="text-xs text-slate-500">
+                {session.email}
+              </p>
             </div>
+            <span className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              🎨 Pengrajin
+            </span>
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-all"
@@ -235,7 +278,7 @@ export default function DashboardPage() {
 
                         {/* Verify Link */}
                         <Link
-                          href={`/verify?tokenId=${item.tokenId}`}
+                          href={`/verify?id=${item.tokenId}`}
                           className="inline-flex items-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-xs text-cyan-400 hover:bg-cyan-500/20 transition-all"
                           onClick={(e) => e.stopPropagation()}
                         >

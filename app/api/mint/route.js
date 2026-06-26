@@ -1,13 +1,23 @@
 import { ethers } from "ethers";
 import { NextResponse } from "next/server";
+import { enforceRateLimit, sanitizeInput, safeErrorResponse, validatePayloadSize } from "../../lib/security";
+import { getClientIP } from "../../lib/rate-limit";
 
 // DECENTRALIZED: Menggunakan ECDSA signature (sama seperti Ethereum)
 // Siapapun bisa verify dengan public address, tanpa perlu server
 
 export async function POST(request) {
   try {
+    // TINGGI-1: Rate Limit — Minting mahal, batasi 3 per menit per IP
+    const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 3 });
+    if (rateLimitError) return rateLimitError;
+
+    // SEDANG-2: Validasi ukuran payload (max 10MB untuk gambar)
+    const payloadError = await validatePayloadSize(request, 10 * 1024 * 1024);
+    if (payloadError) return payloadError;
+
     // Request Logging
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+    const ip = getClientIP(request);
     console.log(`📝 [${new Date().toISOString()}] ${ip} → POST /api/mint`);
 
     console.log("🔵 [Backend] Memulai proses Minting Final...");
@@ -19,14 +29,19 @@ export async function POST(request) {
 
     if (!privateKey || !contractAddress || !alchemyUrl) {
       return NextResponse.json(
-        { error: "Konfigurasi Blockchain (Private Key/Contract/RPC) tidak lengkap di server." },
+        { error: "Konfigurasi Blockchain tidak lengkap di server." },
         { status: 500 }
       );
     }
 
-    // 2. Ambil & Validasi Input Data
+    // 2. Ambil & Validasi Input Data (dengan sanitasi)
     const body = await request.json().catch(() => ({}));
-    const { namaPengrajin, uidNFC, alamatPengrajin, finalDescription, imageBase64, ipfsUrl } = body;
+    const namaPengrajin = sanitizeInput(body.namaPengrajin, 200);
+    const uidNFC = sanitizeInput(body.uidNFC, 100);
+    const alamatPengrajin = sanitizeInput(body.alamatPengrajin, 42);
+    const finalDescription = sanitizeInput(body.finalDescription, 10000);
+    const imageBase64 = body.imageBase64; // Biarkan raw (base64 besar)
+    const ipfsUrl = sanitizeInput(body.ipfsUrl, 500);
 
     // Guard Clauses untuk Validasi Input
     if (!uidNFC) return NextResponse.json({ error: "NFC UID wajib diisi." }, { status: 400 });
@@ -37,13 +52,12 @@ export async function POST(request) {
     const provider = new ethers.JsonRpcProvider(alchemyUrl);
     const wallet = new ethers.Wallet(privateKey, provider);
 
-    // 4. Logika Penentuan Penerima (Recipient)
-    // Validasi alamat Ethereum sederhana (42 karakter, diawali 0x)
-    const isValidAddress = (addr) => addr && addr.length === 42 && addr.startsWith("0x");
-    const recipient = isValidAddress(alamatPengrajin) ? alamatPengrajin : wallet.address;
-
-    if (recipient === wallet.address) {
-      console.log("ℹ️ Alamat pengrajin tidak valid/kosong, NFT akan dikirim ke Admin Wallet.");
+    // 4. TINGGI-5: Validasi alamat Ethereum menggunakan ethers.isAddress
+    let recipient = wallet.address; // Default ke admin wallet
+    if (alamatPengrajin && ethers.isAddress(alamatPengrajin)) {
+      recipient = alamatPengrajin;
+    } else if (alamatPengrajin) {
+      console.log("ℹ️ Alamat pengrajin tidak valid, NFT akan dikirim ke Admin Wallet.");
     }
 
     // 5. Konstruksi Metadata & TokenURI
@@ -122,8 +136,6 @@ export async function POST(request) {
     const receipt = await tx.wait();
 
     // 9. Ambil Token ID dari event logs (jika ada)
-    // Untuk saat ini, kita generate signature berdasarkan txHash + NFC UID
-    // Token ID bisa diambil dari event Transfer di receipt.logs
     let tokenId = "unknown";
     try {
       // Cari event Transfer (topic untuk Transfer: 0xddf252ad...)
@@ -161,14 +173,15 @@ export async function POST(request) {
   } catch (error) {
     console.error("ERROR MINTING SERVICE:", error);
 
-    // Deteksi error spesifik jika bisa
-    let status = 500;
-    let message = error.message || "Terjadi kesalahan internal saat minting.";
+    // SEDANG-3: Pesan error yang aman (tidak membocorkan detail internal)
+    let userMessage = "Terjadi kesalahan saat mencetak sertifikat.";
 
-    if (message.includes("insufficient funds")) {
-      message = "Saldo Wallet Admin tidak mencukupi untuk membayar Gas Fee.";
+    if (error.message?.includes("insufficient funds")) {
+      userMessage = "Saldo Wallet Admin tidak mencukupi untuk membayar Gas Fee.";
+    } else if (error.message?.includes("NFC UID sudah terdaftar")) {
+      userMessage = "NFC UID ini sudah terdaftar. Gunakan NFC tag lain.";
     }
 
-    return NextResponse.json({ error: message }, { status });
+    return safeErrorResponse(error, userMessage);
   }
 }

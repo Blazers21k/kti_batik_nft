@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import ThemeToggle, { useTheme } from "../components/ThemeToggle";
 
@@ -18,6 +19,9 @@ const GeminiLogo = ({ className }) => (
 
 export default function Home() {
   const isDark = useTheme();
+  const router = useRouter();
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
   const [form, setForm] = useState({
     namaPengrajin: "",
     alamatPengrajin: "",
@@ -49,6 +53,39 @@ export default function Home() {
 
   // Ref untuk timer cleanup
   const recognitionTimerRef = useRef(null);
+
+  // Auth guard: cek login sebelum akses area pengrajin
+  useEffect(() => {
+    const userToken = localStorage.getItem("user_token");
+
+    if (!userToken) {
+      router.replace("/login");
+      return;
+    }
+
+    setIsAuthChecking(false);
+  }, [router]);
+
+  const validateForm = useCallback(() => {
+    if (!form.uidNFC) return "Scan NFC terlebih dahulu!!";
+    if (!form.imageBase64) return "Foto batik wajib diupload!";
+    if (!form.namaPengrajin) return "Nama pengrajin wajib diisi!";
+    return null;
+  }, [form]);
+
+  // Loading screen saat mengecek autentikasi
+  if (isAuthChecking) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl mb-4 shadow-lg shadow-amber-500/20 animate-pulse">
+            <span className="text-3xl">🔐</span>
+          </div>
+          <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Memeriksa autentikasi...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -136,13 +173,6 @@ export default function Home() {
       }
     }
   };
-
-  const validateForm = useCallback(() => {
-    if (!form.uidNFC) return "Scan NFC terlebih dahulu!!";
-    if (!form.imageBase64) return "Foto batik wajib diupload!";
-    if (!form.namaPengrajin) return "Nama pengrajin wajib diisi!";
-    return null;
-  }, [form]);
 
   const startListening = () => {
     if (!("webkitSpeechRecognition" in window)) {
@@ -441,6 +471,7 @@ export default function Home() {
                 <input
                   name="namaPengrajin"
                   placeholder="Nama Pengrajin"
+                  value={form.namaPengrajin}
                   onChange={handleChange}
                   className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all"
                   required
@@ -448,6 +479,7 @@ export default function Home() {
                 <input
                   name="alamatPengrajin"
                   placeholder="Wallet (0x...) - Opsional"
+                  value={form.alamatPengrajin}
                   onChange={handleChange}
                   className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-sm text-white font-mono placeholder-slate-500 outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all"
                 />
@@ -493,13 +525,12 @@ export default function Home() {
                   type="button"
                   onClick={scanNFC}
                   disabled={isCheckingNfc}
-                  className={`relative group rounded-2xl flex flex-col items-center justify-center h-24 border-2 transition-all overflow-hidden ${
-                    nfcCheck?.isRegistered
+                  className={`relative group rounded-2xl flex flex-col items-center justify-center h-24 border-2 transition-all overflow-hidden ${nfcCheck?.isRegistered
                       ? "bg-red-500/10 border-red-500/30 text-red-400"
                       : form.uidNFC
                         ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
                         : "bg-white/5 border-white/10 text-white hover:border-cyan-500/50"
-                  }`}
+                    }`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                   <span className="relative text-2xl">
@@ -559,7 +590,7 @@ export default function Home() {
                 <textarea
                   value={previewText}
                   onChange={(e) => setPreviewText(e.target.value)}
-                  className="w-full h-36 p-4 text-sm text-white bg-white/5 border border-indigo-500/20 rounded-xl focus:border-indigo-500/50 outline-none resize-none transition-all"
+                  className="w-full h-64 p-4 text-sm text-white bg-white/5 border border-indigo-500/20 rounded-xl focus:border-indigo-500/50 outline-none resize-y transition-all font-mono leading-relaxed"
                   aria-label="Edit deskripsi sertifikat"
                 />
               </div>
@@ -642,18 +673,22 @@ export default function Home() {
                     <button
                       onClick={() => {
                         const printWindow = window.open('', '_blank');
-                        printWindow.document.write(`
-                          <html>
-                            <head><title>QR Code Sertifikat</title></head>
-                            <body style="display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;">
-                              <div style="text-align:center;">
-                                <h2 style="font-family:sans-serif;">Sertifikat Batik</h2>
-                                <img src="${qrCodeImage}" style="width:300px;height:300px;" />
-                                <p style="font-family:monospace;font-size:10px;word-break:break-all;max-width:300px;">${window.location.origin}${verifyUrl}</p>
-                              </div>
-                            </body>
-                          </html>
-                        `);
+                        // SEDANG-4 FIX: Sanitasi URL sebelum inject ke HTML
+                        const safeUrl = (window.location.origin + verifyUrl)
+                          .replace(/&/g, '&amp;')
+                          .replace(/</g, '&lt;')
+                          .replace(/>/g, '&gt;')
+                          .replace(/"/g, '&quot;');
+                        printWindow.document.write(
+                          '<html>' +
+                          '<head><title>QR Code Sertifikat</title></head>' +
+                          '<body style="display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;">' +
+                          '<div style="text-align:center;">' +
+                          '<h2 style="font-family:sans-serif;">Sertifikat Batik</h2>' +
+                          '<img src="' + qrCodeImage + '" style="width:300px;height:300px;" />' +
+                          '<p style="font-family:monospace;font-size:10px;word-break:break-all;max-width:300px;">' + safeUrl + '</p>' +
+                          '</div></body></html>'
+                        );
                         printWindow.document.close();
                         printWindow.print();
                       }}

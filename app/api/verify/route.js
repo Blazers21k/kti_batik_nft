@@ -1,6 +1,8 @@
 import { ethers } from "ethers";
 import { NextResponse } from "next/server";
 import METADATA_OVERRIDES from "../../config/metadata-overrides";
+import { enforceRateLimit, sanitizeInput, safeErrorResponse } from "../../lib/security";
+import { getClientIP } from "../../lib/rate-limit";
 
 // DECENTRALIZED: Alamat Admin Wallet yang PUBLIK
 // Siapapun bisa verify signature dengan address ini tanpa perlu server
@@ -33,8 +35,12 @@ const verifyQRSignature = (tokenId, nfcUid, providedSignature) => {
 
 export async function GET(request) {
   try {
+    // Rate Limit: 30 verifikasi per menit per IP
+    const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 30 });
+    if (rateLimitError) return rateLimitError;
+
     // Request Logging
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'local';
+    const ip = getClientIP(request);
     console.log(`📝 [${new Date().toISOString()}] ${ip} → GET /api/verify`);
 
     // 1. Validasi Konfigurasi Blockchain
@@ -49,13 +55,18 @@ export async function GET(request) {
       );
     }
 
-    // 2. Validasi Input Token ID & Signature
+    // 2. Validasi Input Token ID & Signature (dengan sanitasi)
     const { searchParams } = new URL(request.url);
-    const tokenId = searchParams.get("id");
+    const tokenId = sanitizeInput(searchParams.get("id"), 20);
     const signature = searchParams.get("sig"); // Optional: QR signature
 
     if (!tokenId) {
       return NextResponse.json({ error: "Token ID wajib disertakan." }, { status: 400 });
+    }
+
+    // Validasi tokenId hanya berisi angka
+    if (!/^\d+$/.test(tokenId)) {
+      return NextResponse.json({ error: "Token ID tidak valid." }, { status: 400 });
     }
 
     console.log(`🔍 Memverifikasi Token #${tokenId}${signature ? ' dengan signature' : ''}...`);
@@ -180,13 +191,6 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    console.error("💥 Verify API Error:", error);
-
-    let message = "Terjadi kesalahan saat verifikasi.";
-    if (error.code === "NETWORK_ERROR") {
-      message = "Gagal terhubung ke jaringan blockchain.";
-    }
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return safeErrorResponse(error, "Terjadi kesalahan saat verifikasi.");
   }
 }
