@@ -473,15 +473,23 @@ export default function Home() {
                   placeholder="Nama Pengrajin"
                   value={form.namaPengrajin}
                   onChange={handleChange}
-                  className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all"
+                  className={`w-full p-4 rounded-xl text-sm outline-none transition-all ${
+                    isDark
+                      ? "bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:border-amber-500/50 focus:bg-white/10"
+                      : "bg-slate-100 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:bg-white"
+                  }`}
                   required
                 />
                 <input
                   name="alamatPengrajin"
-                  placeholder="Wallet (0x...) - Opsional"
+                  placeholder="Wallet Crypto (0x...) - Opsional"
                   value={form.alamatPengrajin}
                   onChange={handleChange}
-                  className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-sm text-white font-mono placeholder-slate-500 outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all"
+                  className={`w-full p-4 rounded-xl text-sm font-mono outline-none transition-all ${
+                    isDark
+                      ? "bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:border-amber-500/50 focus:bg-white/10"
+                      : "bg-slate-100 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:bg-white"
+                  }`}
                 />
               </div>
 
@@ -491,7 +499,11 @@ export default function Home() {
                   placeholder="Filosofi Batik (Suara/Teks)..."
                   value={form.filosofi}
                   onChange={handleChange}
-                  className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 h-24 pr-12 outline-none focus:border-amber-500/50 focus:bg-white/10 transition-all resize-none"
+                  className={`w-full p-4 rounded-xl text-sm h-24 pr-12 outline-none resize-none transition-all ${
+                    isDark
+                      ? "bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:border-amber-500/50 focus:bg-white/10"
+                      : "bg-slate-100 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:bg-white"
+                  }`}
                 />
                 <button
                   type="button"
@@ -590,7 +602,11 @@ export default function Home() {
                 <textarea
                   value={previewText}
                   onChange={(e) => setPreviewText(e.target.value)}
-                  className="w-full h-64 p-4 text-sm text-white bg-white/5 border border-indigo-500/20 rounded-xl focus:border-indigo-500/50 outline-none resize-y transition-all font-mono leading-relaxed"
+                  className={`w-full h-64 p-4 text-sm rounded-xl focus:border-indigo-500/50 outline-none resize-y transition-all font-mono leading-relaxed ${
+                    isDark
+                      ? "text-white bg-white/5 border border-indigo-500/20"
+                      : "text-slate-900 bg-slate-100 border border-indigo-200"
+                  }`}
                   aria-label="Edit deskripsi sertifikat"
                 />
               </div>

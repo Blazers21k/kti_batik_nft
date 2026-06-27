@@ -169,6 +169,7 @@ export default function DashboardPage() {
             <span>➕</span>
             <span>Daftarkan Karya Baru</span>
           </Link>
+          {/* Hide gallery link for now
           <Link
             href="/gallery"
             className="px-6 py-3 bg-white/5 border border-white/10 hover:border-white/20 text-white rounded-xl transition-all flex items-center gap-2"
@@ -176,6 +177,7 @@ export default function DashboardPage() {
             <span>🖼️</span>
             <span>Gallery Publik</span>
           </Link>
+          */}
         </div>
 
         {/* Karya Grid */}

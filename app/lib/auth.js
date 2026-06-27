@@ -25,9 +25,11 @@ const OTP_DURATION_MS = 10 * 60 * 1000; // 10 menit
 function readData() {
   try {
     const raw = fs.readFileSync(DATA_FILE, "utf-8");
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!parsed.passwordResets) parsed.passwordResets = [];
+    return parsed;
   } catch {
-    return { users: [], sessions: [], pendingVerifications: [] };
+    return { users: [], sessions: [], pendingVerifications: [], passwordResets: [] };
   }
 }
 
@@ -290,4 +292,93 @@ export function destroySession(token) {
   }
 
   return false;
+}
+
+// ═══════════════════════════════════════
+// PASSWORD RESET SUPPORT
+// ═══════════════════════════════════════
+
+export async function createPasswordReset(email) {
+  const data = readData();
+
+  const user = data.users.find(
+    (u) => u.email.toLowerCase() === email.toLowerCase()
+  );
+  if (!user) {
+    return { success: false, error: "Email tidak terdaftar" };
+  }
+
+  // Hapus request reset lama untuk email ini
+  data.passwordResets = data.passwordResets.filter(
+    (r) => r.email.toLowerCase() !== email.toLowerCase()
+  );
+
+  const otp = generateOTP();
+
+  const resetRequest = {
+    id: crypto.randomUUID(),
+    email: email.toLowerCase().trim(),
+    otpCode: otp,
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + OTP_DURATION_MS).toISOString(),
+  };
+
+  data.passwordResets.push(resetRequest);
+
+  // Cleanup expired resets
+  data.passwordResets = data.passwordResets.filter(
+    (r) => new Date(r.expiresAt) > new Date()
+  );
+
+  writeData(data);
+
+  return { success: true, otp, nama: user.nama };
+}
+
+export async function resetPassword(email, otpCode, newPassword) {
+  const data = readData();
+
+  // Cari request reset yang aktif dan valid
+  const resetIndex = data.passwordResets.findIndex(
+    (r) =>
+      r.email.toLowerCase() === email.toLowerCase() &&
+      r.otpCode === otpCode &&
+      new Date(r.expiresAt) > new Date()
+  );
+
+  if (resetIndex === -1) {
+    return { success: false, error: "Kode verifikasi salah atau sudah kedaluwarsa" };
+  }
+
+  const user = data.users.find(
+    (u) => u.email.toLowerCase() === email.toLowerCase()
+  );
+  if (!user) {
+    return { success: false, error: "User tidak ditemukan" };
+  }
+
+  // Validasi password baru
+  const validation = isValidPassword(newPassword);
+  if (!validation.valid) {
+    return { success: false, error: validation.reason };
+  }
+
+  // Hash password baru dan update
+  const hashedPassword = await hashPassword(newPassword);
+  user.passwordHash = hashedPassword;
+
+  // Hapus OTP reset yang sudah terpakai
+  data.passwordResets.splice(resetIndex, 1);
+
+  // Revoke all sessions for this user (force logout everywhere)
+  data.sessions = data.sessions.filter((s) => s.userId !== user.id);
+
+  // Cleanup expired resets
+  data.passwordResets = data.passwordResets.filter(
+    (r) => new Date(r.expiresAt) > new Date()
+  );
+
+  writeData(data);
+
+  return { success: true };
 }

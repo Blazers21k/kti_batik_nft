@@ -144,7 +144,7 @@ export default function LandingPage() {
             </div>
           </Link>
 
-          {/* Card: Gallery */}
+          {/* Card: Gallery - Hidden for now
           <Link href="/gallery" className="group relative block">
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className={`relative p-6 md:p-8 backdrop-blur-xl rounded-2xl border transition-all duration-300 overflow-hidden ${isDark ? 'bg-white/5 border-white/10 group-hover:border-emerald-500/30 group-hover:bg-white/10' : 'bg-white/60 border-slate-200 group-hover:border-emerald-400 group-hover:bg-white/80 shadow-sm group-hover:shadow-md'}`}>
@@ -167,6 +167,7 @@ export default function LandingPage() {
               </div>
             </div>
           </Link>
+          */}
 
           {/* Card: Login / Daftar Akun */}
           <Link href="/login" className="group relative block">

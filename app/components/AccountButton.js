@@ -140,6 +140,7 @@ export default function AccountButton() {
               <span>🎨</span>
               <span>Area Pengrajin</span>
             </Link>
+            {/* Hide gallery dropdown link for now
             <Link
               href="/gallery"
               onClick={() => setIsOpen(false)}
@@ -148,6 +149,7 @@ export default function AccountButton() {
               <span>🖼️</span>
               <span>Gallery</span>
             </Link>
+            */}
           </div>
 
           {/* Logout */}
