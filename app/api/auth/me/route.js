@@ -26,7 +26,7 @@ export async function GET(request) {
       );
     }
 
-    const user = getSessionUser(token);
+    const user = await getSessionUser(token);
 
     if (!user) {
       return NextResponse.json(
@@ -36,7 +36,7 @@ export async function GET(request) {
     }
 
     // Perpanjang session (sliding window — 7 hari dari sekarang)
-    refreshSession(token);
+    await refreshSession(token);
 
     return NextResponse.json({
       success: true,

@@ -1,0 +1,135 @@
+[
+  {
+    "id": "sogan",
+    "nama": "Sogan (Cokelat Keemasan)",
+    "jenis": "alam",
+    "sumber_bahan": "Kulit kayu pohon soga tingi (Ceriops tagal), kayu tegeran (Cudrania javanensis), kulit kayu jambal (Pelthophorum pterocarpum)",
+    "warna_hasil": "Cokelat keemasan hangat, dari cokelat muda hingga cokelat tua",
+    "makna": "Ketenangan, kehangatan, kedewasaan, dan kebijaksanaan. Warna sogan identik dengan batik keraton Jawa yang elegan dan berkelas.",
+    "daerah_pengguna": ["Surakarta", "Yogyakarta"],
+    "catatan": "Warna paling ikonik dalam batik klasik Jawa. Proses pewarnaan sogan memerlukan puluhan kali pencelupan untuk mendapatkan warna yang kaya dan tahan lama.",
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"},
+      {"tipe": "buku", "judul": "Batik Klasik", "penulis": "Hamzuri", "tahun": 1994}
+    ]
+  },
+  {
+    "id": "indigo",
+    "nama": "Indigo / Wedel (Biru Tua)",
+    "jenis": "alam",
+    "sumber_bahan": "Daun tanaman nila/indigo (Indigofera tinctoria), daun tom (Indigofera suffruticosa)",
+    "warna_hasil": "Biru tua hingga biru kehitaman (wedelan)",
+    "makna": "Ketenangan, kedalaman spiritual, kesetiaan, dan misteri. Biru indigo juga diasosiasikan dengan langit dan laut.",
+    "daerah_pengguna": ["Yogyakarta", "Surakarta", "Pekalongan", "seluruh Jawa"],
+    "catatan": "Proses pembuatan pewarna indigo melibatkan fermentasi daun nila selama berhari-hari. Warna biru-hitam (wedelan) adalah salah satu warna dasar dalam batik klasik bersama sogan dan putih.",
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"},
+      {"tipe": "buku", "judul": "Batik: Filosofi, Motif, dan Kegunaan", "penulis": "Adi Kusrianto", "tahun": 2013}
+    ]
+  },
+  {
+    "id": "mengkudu",
+    "nama": "Mengkudu (Merah)",
+    "jenis": "alam",
+    "sumber_bahan": "Akar pohon mengkudu (Morinda citrifolia)",
+    "warna_hasil": "Merah tua hingga merah bata",
+    "makna": "Keberanian, kekuatan, semangat, dan keberuntungan. Warna merah dalam batik pesisir sering diasosiasikan dengan vitalitas.",
+    "daerah_pengguna": ["Lasem", "Cirebon", "Madura", "Pekalongan"],
+    "catatan": "Warna merah mengkudu (bang) adalah ciri khas batik Lasem yang terkenal. Proses pewarnaan memerlukan perendaman berulang selama berminggu-minggu.",
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"},
+      {"tipe": "website", "nama": "iWareBatik.org (UNESCO)", "url": "https://iwarebatik.org"}
+    ]
+  },
+  {
+    "id": "tingi",
+    "nama": "Tingi (Cokelat Kemerahan)",
+    "jenis": "alam",
+    "sumber_bahan": "Kulit kayu pohon tingi (Ceriops tagal)",
+    "warna_hasil": "Cokelat kemerahan",
+    "makna": "Kehangatan dan keberanian yang tenang.",
+    "daerah_pengguna": ["Jawa Tengah", "Jawa Timur"],
+    "catatan": "Salah satu komponen utama dalam pembuatan warna sogan. Sering dikombinasikan dengan tegeran dan jambal.",
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"}
+    ]
+  },
+  {
+    "id": "tegeran",
+    "nama": "Tegeran (Kuning)",
+    "jenis": "alam",
+    "sumber_bahan": "Kayu tegeran (Cudrania javanensis)",
+    "warna_hasil": "Kuning cerah hingga kuning kecokelatan",
+    "makna": "Kegembiraan, optimisme, dan kemakmuran.",
+    "daerah_pengguna": ["Jawa Tengah", "Jawa Timur"],
+    "catatan": "Komponen penting dalam warna sogan. Juga digunakan sendiri untuk menghasilkan warna kuning.",
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"}
+    ]
+  },
+  {
+    "id": "jolawe",
+    "nama": "Jolawe (Kuning Kehijauan)",
+    "jenis": "alam",
+    "sumber_bahan": "Buah jolawe/johar (Terminalia bellirica)",
+    "warna_hasil": "Kuning kehijauan, kuning olive",
+    "makna": "Kesuburan, pertumbuhan, dan harapan.",
+    "daerah_pengguna": ["Jawa Tengah", "Jawa Timur"],
+    "catatan": "Digunakan sebagai mordant alami sekaligus pewarna. Sering dikombinasikan dengan pewarna alam lainnya.",
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"}
+    ]
+  },
+  {
+    "id": "secang",
+    "nama": "Secang (Merah Muda/Pink)",
+    "jenis": "alam",
+    "sumber_bahan": "Kayu secang (Caesalpinia sappan)",
+    "warna_hasil": "Merah muda hingga merah tua, tergantung pH",
+    "makna": "Kelembutan, kasih sayang, dan keindahan.",
+    "daerah_pengguna": ["Jawa Tengah", "Yogyakarta"],
+    "catatan": "Warna berubah tergantung kondisi pH — asam menghasilkan merah, basa menghasilkan ungu. Juga digunakan sebagai minuman herbal.",
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"}
+    ]
+  },
+  {
+    "id": "kunyit",
+    "nama": "Kunyit/Kurkuma (Kuning Cerah)",
+    "jenis": "alam",
+    "sumber_bahan": "Rimpang kunyit (Curcuma longa)",
+    "warna_hasil": "Kuning cerah, kuning menyala",
+    "makna": "Kemakmuran, kebahagiaan, dan keberuntungan.",
+    "daerah_pengguna": ["seluruh Indonesia"],
+    "catatan": "Pewarna alam yang paling mudah didapat. Warna kurang tahan cahaya dibanding pewarna alam lainnya.",
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"}
+    ]
+  },
+  {
+    "id": "sintetis_naphtol",
+    "nama": "Naphtol (Sintetis)",
+    "jenis": "sintetis",
+    "sumber_bahan": "Zat kimia naphtol AS dan garam diazonium",
+    "warna_hasil": "Beragam — merah, biru, kuning, hijau, hitam (tergantung kombinasi naphtol dan garam)",
+    "makna": "Tidak memiliki makna tradisional khusus. Dipilih berdasarkan kebutuhan estetis.",
+    "daerah_pengguna": ["seluruh Indonesia, terutama produsen massal"],
+    "catatan": "Pewarna sintetis yang paling umum digunakan dalam industri batik modern. Lebih murah, cepat, dan konsisten dibanding pewarna alam. Diperkenalkan oleh Belanda pada awal abad ke-20.",
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"}
+    ]
+  },
+  {
+    "id": "sintetis_remasol",
+    "nama": "Remasol (Sintetis Reaktif)",
+    "jenis": "sintetis",
+    "sumber_bahan": "Zat warna reaktif (reactive dyes)",
+    "warna_hasil": "Beragam warna cerah dan tahan luntur",
+    "makna": "Tidak memiliki makna tradisional khusus.",
+    "daerah_pengguna": ["seluruh Indonesia"],
+    "catatan": "Pewarna sintetis modern yang menghasilkan warna cerah dan tahan cuci. Cocok untuk batik kontemporer yang menginginkan warna-warna vibrant.",
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"}
+    ]
+  }
+]

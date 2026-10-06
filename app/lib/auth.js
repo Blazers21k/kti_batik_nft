@@ -10,10 +10,8 @@
 
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import fs from "fs";
-import path from "path";
+import { readAuthState, updateAuthState } from "./auth-state";
 
-const DATA_FILE = path.join(process.cwd(), "data", "users.json");
 const SALT_ROUNDS = 12;
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 hari
 const OTP_DURATION_MS = 10 * 60 * 1000; // 10 menit
@@ -21,25 +19,6 @@ const OTP_DURATION_MS = 10 * 60 * 1000; // 10 menit
 // ═══════════════════════════════════════
 // DATA ACCESS
 // ═══════════════════════════════════════
-
-function readData() {
-  try {
-    const raw = fs.readFileSync(DATA_FILE, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (!parsed.passwordResets) parsed.passwordResets = [];
-    return parsed;
-  } catch {
-    return { users: [], sessions: [], pendingVerifications: [], passwordResets: [] };
-  }
-}
-
-function writeData(data) {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
-}
 
 // ═══════════════════════════════════════
 // PASSWORD HASHING
@@ -94,102 +73,81 @@ export function isValidPassword(password) {
  * Data belum masuk ke users[] sampai OTP diverifikasi
  */
 export async function createPendingVerification(nama, email, password) {
-  const data = readData();
-
-  // Cek email sudah terdaftar di users
-  const existingUser = data.users.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase()
-  );
-  if (existingUser) {
-    return { success: false, error: "Email sudah terdaftar. Silakan login." };
-  }
-
-  // Hapus pending verification lama untuk email ini
-  data.pendingVerifications = data.pendingVerifications.filter(
-    (p) => p.email.toLowerCase() !== email.toLowerCase()
-  );
-
   const otp = generateOTP();
   const hashedPassword = await hashPassword(password);
-
+  const normalizedEmail = email.toLowerCase().trim();
   const pending = {
     id: crypto.randomUUID(),
     nama: nama.trim(),
-    email: email.toLowerCase().trim(),
+    email: normalizedEmail,
     passwordHash: hashedPassword,
     otpCode: otp,
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + OTP_DURATION_MS).toISOString(),
   };
 
-  data.pendingVerifications.push(pending);
+  return updateAuthState((data) => {
+    const existingUser = data.users.find(
+      (user) => user.email.toLowerCase() === normalizedEmail
+    );
+    if (existingUser) {
+      return { success: false, error: "Email sudah terdaftar. Silakan login." };
+    }
 
-  // Cleanup expired pendings
-  data.pendingVerifications = data.pendingVerifications.filter(
-    (p) => new Date(p.expiresAt) > new Date()
-  );
+    data.pendingVerifications = data.pendingVerifications.filter(
+      (entry) => entry.email.toLowerCase() !== normalizedEmail && new Date(entry.expiresAt) > new Date()
+    );
+    data.pendingVerifications.push(pending);
 
-  writeData(data);
-
-  return { success: true, otp, pendingId: pending.id };
+    return { success: true, otp, pendingId: pending.id };
+  });
 }
 
 /**
  * Verifikasi OTP dan buat akun user
  */
-export function verifyOTPAndCreateUser(email, otpCode) {
-  const data = readData();
+export async function verifyOTPAndCreateUser(email, otpCode) {
+  const normalizedEmail = email.toLowerCase();
+  return updateAuthState((data) => {
+    const pendingIndex = data.pendingVerifications.findIndex(
+      (entry) =>
+        entry.email.toLowerCase() === normalizedEmail &&
+        entry.otpCode === otpCode &&
+        new Date(entry.expiresAt) > new Date()
+    );
 
-  const pendingIndex = data.pendingVerifications.findIndex(
-    (p) =>
-      p.email.toLowerCase() === email.toLowerCase() &&
-      p.otpCode === otpCode &&
-      new Date(p.expiresAt) > new Date()
-  );
+    if (pendingIndex === -1) {
+      return { success: false, error: "Kode verifikasi salah atau sudah kedaluwarsa" };
+    }
 
-  if (pendingIndex === -1) {
-    return { success: false, error: "Kode verifikasi salah atau sudah kedaluwarsa" };
-  }
+    const pending = data.pendingVerifications[pendingIndex];
+    const newUser = {
+      id: crypto.randomUUID(),
+      nama: pending.nama,
+      email: pending.email,
+      passwordHash: pending.passwordHash,
+      verified: true,
+      createdAt: new Date().toISOString(),
+    };
 
-  const pending = data.pendingVerifications[pendingIndex];
+    data.users.push(newUser);
+    data.pendingVerifications.splice(pendingIndex, 1);
 
-  // Buat user baru
-  const newUser = {
-    id: crypto.randomUUID(),
-    nama: pending.nama,
-    email: pending.email,
-    passwordHash: pending.passwordHash,
-    verified: true,
-    createdAt: new Date().toISOString(),
-  };
+    const token = generateSessionToken();
+    data.sessions.push({
+      token,
+      userId: newUser.id,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + SESSION_DURATION_MS).toISOString(),
+    });
+    data.sessions = data.sessions.filter((session) => new Date(session.expiresAt) > new Date());
 
-  data.users.push(newUser);
-
-  // Hapus pending verification
-  data.pendingVerifications.splice(pendingIndex, 1);
-
-  // Buat session otomatis
-  const token = generateSessionToken();
-  const session = {
-    token,
-    userId: newUser.id,
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + SESSION_DURATION_MS).toISOString(),
-  };
-  data.sessions.push(session);
-
-  // Cleanup expired sessions
-  data.sessions = data.sessions.filter(
-    (s) => new Date(s.expiresAt) > new Date()
-  );
-
-  writeData(data);
-
-  return {
-    success: true,
-    user: { id: newUser.id, nama: newUser.nama, email: newUser.email },
-    token,
-  };
+    return {
+      success: true,
+      user: { id: newUser.id, nama: newUser.nama, email: newUser.email },
+      token,
+    };
+  });
 }
 
 // ═══════════════════════════════════════
@@ -197,10 +155,11 @@ export function verifyOTPAndCreateUser(email, otpCode) {
 // ═══════════════════════════════════════
 
 export async function authenticateUser(email, password) {
-  const data = readData();
+  const data = await readAuthState();
+  const normalizedEmail = email.toLowerCase();
 
   const user = data.users.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase()
+    (entry) => entry.email.toLowerCase() === normalizedEmail
   );
 
   if (!user) {
@@ -221,14 +180,12 @@ export async function authenticateUser(email, password) {
     expiresAt: new Date(Date.now() + SESSION_DURATION_MS).toISOString(),
   };
 
-  data.sessions.push(session);
-
-  // Cleanup expired sessions
-  data.sessions = data.sessions.filter(
-    (s) => new Date(s.expiresAt) > new Date()
-  );
-
-  writeData(data);
+  await updateAuthState((current) => {
+    current.sessions.push(session);
+    current.sessions = current.sessions.filter(
+      (entry) => new Date(entry.expiresAt) > new Date()
+    );
+  });
 
   return {
     success: true,
@@ -241,10 +198,10 @@ export async function authenticateUser(email, password) {
 // SESSION MANAGEMENT
 // ═══════════════════════════════════════
 
-export function getSessionUser(token) {
+export async function getSessionUser(token) {
   if (!token) return null;
 
-  const data = readData();
+  const data = await readAuthState();
 
   const session = data.sessions.find(
     (s) => s.token === token && new Date(s.expiresAt) > new Date()
@@ -263,35 +220,28 @@ export function getSessionUser(token) {
  * Dipanggil setiap kali user mengakses /api/auth/me
  * sehingga session tetap aktif selama user masih aktif.
  */
-export function refreshSession(token) {
+export async function refreshSession(token) {
   if (!token) return false;
 
-  const data = readData();
-  const session = data.sessions.find(
-    (s) => s.token === token && new Date(s.expiresAt) > new Date()
-  );
+  return updateAuthState((data) => {
+    const session = data.sessions.find(
+      (entry) => entry.token === token && new Date(entry.expiresAt) > new Date()
+    );
+    if (!session) return false;
 
-  if (!session) return false;
-
-  // Perpanjang expiry 7 hari dari sekarang
-  session.expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
-  writeData(data);
-  return true;
+    session.expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
+    return true;
+  });
 }
 
-export function destroySession(token) {
+export async function destroySession(token) {
   if (!token) return false;
 
-  const data = readData();
-  const initialLength = data.sessions.length;
-  data.sessions = data.sessions.filter((s) => s.token !== token);
-
-  if (data.sessions.length < initialLength) {
-    writeData(data);
-    return true;
-  }
-
-  return false;
+  return updateAuthState((data) => {
+    const initialLength = data.sessions.length;
+    data.sessions = data.sessions.filter((entry) => entry.token !== token);
+    return data.sessions.length < initialLength;
+  });
 }
 
 // ═══════════════════════════════════════
@@ -299,86 +249,59 @@ export function destroySession(token) {
 // ═══════════════════════════════════════
 
 export async function createPasswordReset(email) {
-  const data = readData();
-
-  const user = data.users.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase()
-  );
-  if (!user) {
-    return { success: false, error: "Email tidak terdaftar" };
-  }
-
-  // Hapus request reset lama untuk email ini
-  data.passwordResets = data.passwordResets.filter(
-    (r) => r.email.toLowerCase() !== email.toLowerCase()
-  );
-
   const otp = generateOTP();
-
+  const normalizedEmail = email.toLowerCase().trim();
   const resetRequest = {
     id: crypto.randomUUID(),
-    email: email.toLowerCase().trim(),
+    email: normalizedEmail,
     otpCode: otp,
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + OTP_DURATION_MS).toISOString(),
   };
 
-  data.passwordResets.push(resetRequest);
+  return updateAuthState((data) => {
+    const user = data.users.find(
+      (entry) => entry.email.toLowerCase() === normalizedEmail
+    );
+    if (!user) return { success: false, error: "Email tidak terdaftar" };
 
-  // Cleanup expired resets
-  data.passwordResets = data.passwordResets.filter(
-    (r) => new Date(r.expiresAt) > new Date()
-  );
+    data.passwordResets = data.passwordResets.filter(
+      (entry) => entry.email.toLowerCase() !== normalizedEmail && new Date(entry.expiresAt) > new Date()
+    );
+    data.passwordResets.push(resetRequest);
 
-  writeData(data);
-
-  return { success: true, otp, nama: user.nama };
+    return { success: true, otp, nama: user.nama };
+  });
 }
 
 export async function resetPassword(email, otpCode, newPassword) {
-  const data = readData();
-
-  // Cari request reset yang aktif dan valid
-  const resetIndex = data.passwordResets.findIndex(
-    (r) =>
-      r.email.toLowerCase() === email.toLowerCase() &&
-      r.otpCode === otpCode &&
-      new Date(r.expiresAt) > new Date()
-  );
-
-  if (resetIndex === -1) {
-    return { success: false, error: "Kode verifikasi salah atau sudah kedaluwarsa" };
-  }
-
-  const user = data.users.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase()
-  );
-  if (!user) {
-    return { success: false, error: "User tidak ditemukan" };
-  }
-
-  // Validasi password baru
   const validation = isValidPassword(newPassword);
   if (!validation.valid) {
     return { success: false, error: validation.reason };
   }
 
-  // Hash password baru dan update
   const hashedPassword = await hashPassword(newPassword);
-  user.passwordHash = hashedPassword;
+  const normalizedEmail = email.toLowerCase();
+  return updateAuthState((data) => {
+    const resetIndex = data.passwordResets.findIndex(
+      (entry) =>
+        entry.email.toLowerCase() === normalizedEmail &&
+        entry.otpCode === otpCode &&
+        new Date(entry.expiresAt) > new Date()
+    );
+    if (resetIndex === -1) {
+      return { success: false, error: "Kode verifikasi salah atau sudah kedaluwarsa" };
+    }
 
-  // Hapus OTP reset yang sudah terpakai
-  data.passwordResets.splice(resetIndex, 1);
+    const user = data.users.find((entry) => entry.email.toLowerCase() === normalizedEmail);
+    if (!user) return { success: false, error: "User tidak ditemukan" };
 
-  // Revoke all sessions for this user (force logout everywhere)
-  data.sessions = data.sessions.filter((s) => s.userId !== user.id);
-
-  // Cleanup expired resets
-  data.passwordResets = data.passwordResets.filter(
-    (r) => new Date(r.expiresAt) > new Date()
-  );
-
-  writeData(data);
-
-  return { success: true };
+    user.passwordHash = hashedPassword;
+    data.passwordResets.splice(resetIndex, 1);
+    data.sessions = data.sessions.filter((session) => session.userId !== user.id);
+    data.passwordResets = data.passwordResets.filter(
+      (entry) => new Date(entry.expiresAt) > new Date()
+    );
+    return { success: true };
+  });
 }

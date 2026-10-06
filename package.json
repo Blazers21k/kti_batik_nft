@@ -6,10 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "rag:build": "node scripts/build-embeddings.js",
+    "rag:test": "node scripts/test-rag-search.js",
+    "rag:smoke": "node scripts/test-gemini-models.js",
+    "rag:analysis-test": "node scripts/test-rag-analysis.js",
+    "rag:validate": "node scripts/validate-rag-data.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
+    "@google/genai": "^2.27.0",
+    "@vercel/analytics": "^2.0.1",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
@@ -17,6 +23,7 @@
     "html5-qrcode": "^2.3.8",
     "next": "16.0.10",
     "nodemailer": "^9.0.1",
+    "pg": "^8.23.1",
     "qrcode": "^1.5.4",
     "react": "19.2.0",
     "react-dom": "19.2.0"

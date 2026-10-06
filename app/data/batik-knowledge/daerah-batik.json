@@ -1,0 +1,122 @@
+[
+  {
+    "id": "surakarta",
+    "nama": "Surakarta (Solo)",
+    "provinsi": "Jawa Tengah",
+    "karakteristik": "Batik klasik dengan warna sogan keemasan yang hangat, motif halus dan detail penuh isen-isen. Gaya elegan, luwes, dan kalem. Dipengaruhi kuat oleh tradisi Keraton Kasunanan dan Puro Mangkunegaran.",
+    "motif_khas": ["parang-rusak", "kawung", "truntum", "sido-mukti", "sido-luhur", "semen-rama", "udan-liris", "wahyu-tumurun"],
+    "teknik_dominan": "batik_tulis",
+    "warna_dominan": ["sogan keemasan", "hitam/biru tua", "putih krem"],
+    "sejarah": "Pusat batik sejak berdirinya Keraton Kasunanan (1745). Kampung Laweyan dan Kauman adalah sentra batik tertua di Solo.",
+    "sentra_produksi": ["Kampung Batik Laweyan", "Kampung Batik Kauman"],
+    "sumber": [
+      {"tipe": "website", "nama": "iWareBatik.org (UNESCO)", "url": "https://iwarebatik.org"},
+      {"tipe": "buku", "judul": "Batik Klasik", "penulis": "Hamzuri", "tahun": 1994}
+    ]
+  },
+  {
+    "id": "yogyakarta",
+    "nama": "Yogyakarta",
+    "provinsi": "DI Yogyakarta",
+    "karakteristik": "Batik klasik dengan latar putih/krem dan motif cokelat tua-hitam yang kontras tegas. Garis motif lebih tebal dan tegas. Komposisi geometris dan terstruktur. Aturan motif larangan lebih ketat.",
+    "motif_khas": ["parang-rusak", "kawung", "nitik", "ceplok", "batik-yogyakarta-klasik"],
+    "teknik_dominan": "batik_tulis",
+    "warna_dominan": ["cokelat tua/hitam (motif)", "putih/krem (latar)", "biru indigo"],
+    "sejarah": "Berkembang pasca Perjanjian Giyanti (1755). Sultan HB I mengembangkan gaya batik tersendiri yang tegas dan lugas.",
+    "sentra_produksi": ["Kampung Batik Taman Sari", "Imogiri", "Bantul"],
+    "sumber": [
+      {"tipe": "website", "nama": "iWareBatik.org (UNESCO)", "url": "https://iwarebatik.org"},
+      {"tipe": "buku", "judul": "Batik: Filosofi, Motif, dan Kegunaan", "penulis": "Adi Kusrianto", "tahun": 2013}
+    ]
+  },
+  {
+    "id": "pekalongan",
+    "nama": "Pekalongan",
+    "provinsi": "Jawa Tengah",
+    "karakteristik": "Batik pesisir dengan warna-warna cerah dan berani. Motif naturalistik (bunga, burung), pengaruh kuat Tionghoa, Arab, India, dan Eropa. Lebih komersial dan dinamis. Dijuluki 'Kota Batik' dan ditetapkan UNESCO sebagai Creative City of Crafts.",
+    "motif_khas": ["buketan", "jlamprang", "batik-pesisir"],
+    "teknik_dominan": "batik_tulis",
+    "warna_dominan": ["multi-warna cerah", "merah", "biru", "hijau", "kuning"],
+    "sejarah": "Pusat batik pesisir sejak abad ke-17. Pengaruh Indo-Eropa pada abad ke-19 melahirkan motif buketan yang khas.",
+    "sentra_produksi": ["Kampung Batik Kauman", "Kampung Batik Pesindon", "Wiradesa"],
+    "sumber": [
+      {"tipe": "website", "nama": "iWareBatik.org (UNESCO)", "url": "https://iwarebatik.org"},
+      {"tipe": "pemerintah", "nama": "Warisan Budaya Takbenda, Kemendikbud RI"}
+    ]
+  },
+  {
+    "id": "cirebon",
+    "nama": "Cirebon",
+    "provinsi": "Jawa Barat",
+    "karakteristik": "Batik dengan pengaruh kuat akulturasi Tionghoa-Jawa-Islam. Motif-motif khas seperti mega mendung, wadasan, dan singa barong. Warna berani dengan gradasi berlapis yang menjadi ciri utama.",
+    "motif_khas": ["megamendung", "wadasan", "singa-barong"],
+    "teknik_dominan": "batik_tulis",
+    "warna_dominan": ["biru gradasi", "merah", "cokelat", "hitam"],
+    "sejarah": "Tradisi batik Cirebon berakar dari keraton Kasepuhan dan Kanoman sejak abad ke-16, pengaruh Sunan Gunung Jati dan pedagang Tionghoa.",
+    "sentra_produksi": ["Trusmi", "Plered", "Kalitengah"],
+    "sumber": [
+      {"tipe": "website", "nama": "iWareBatik.org (UNESCO)", "url": "https://iwarebatik.org"},
+      {"tipe": "pemerintah", "nama": "Warisan Budaya Takbenda, Kemendikbud RI"}
+    ]
+  },
+  {
+    "id": "lasem",
+    "nama": "Lasem",
+    "provinsi": "Jawa Tengah (Rembang)",
+    "karakteristik": "Dikenal sebagai 'Tiongkok Kecil'. Warna merah darah (bang) yang sangat khas dan sulit ditiru. Motif menggabungkan elemen Tionghoa (naga, phoenix, bunga seruni) dan Jawa.",
+    "motif_khas": ["lasem-bang-biru"],
+    "teknik_dominan": "batik_tulis",
+    "warna_dominan": ["merah darah (bang)", "biru tua", "sogan"],
+    "sejarah": "Tradisi batik sejak abad ke-15 dengan kedatangan perantau Tionghoa. Resep pewarna merah diwariskan turun-temurun sebagai rahasia keluarga.",
+    "sentra_produksi": ["Babagan", "Karangturi", "Selopuro"],
+    "sumber": [
+      {"tipe": "website", "nama": "iWareBatik.org (UNESCO)", "url": "https://iwarebatik.org"},
+      {"tipe": "pemerintah", "nama": "Warisan Budaya Takbenda, Kemendikbud RI"}
+    ]
+  },
+  {
+    "id": "madura",
+    "nama": "Madura",
+    "provinsi": "Jawa Timur",
+    "karakteristik": "Warna cerah, merah menyala, dan kontras sangat kuat. Lebih berani dan ekspresif dibanding batik pesisir Jawa. Teknik gentongan (perendaman dalam gentong) menghasilkan warna sangat intens.",
+    "motif_khas": ["batik-madura"],
+    "teknik_dominan": "batik_tulis",
+    "warna_dominan": ["merah menyala", "kuning cerah", "hijau", "biru tua"],
+    "sejarah": "Tradisi membatik sejak abad ke-17, pusat di Tanjung Bumi, Bangkalan. Teknik gentongan merupakan warisan unik Madura.",
+    "sentra_produksi": ["Tanjung Bumi (Bangkalan)", "Pamekasan", "Sumenep"],
+    "sumber": [
+      {"tipe": "website", "nama": "iWareBatik.org (UNESCO)", "url": "https://iwarebatik.org"},
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"}
+    ]
+  },
+  {
+    "id": "tuban",
+    "nama": "Tuban",
+    "provinsi": "Jawa Timur",
+    "karakteristik": "Unik karena menggabungkan teknik tenun gedog (tenun tangan) dengan batik tulis dalam satu kain. Motif dan tekstur yang tidak ditemukan di daerah lain. Pewarna alam dominan.",
+    "motif_khas": ["batik-tuban"],
+    "teknik_dominan": "batik_tulis_di_atas_tenun",
+    "warna_dominan": ["cokelat alami", "biru indigo", "merah mengkudu"],
+    "sejarah": "Tradisi batik gedog sejak era Majapahit. Salah satu pusat batik tertua di Jawa. Kata 'gedog' dari suara alat tenun.",
+    "sentra_produksi": ["Kerek", "Jenu"],
+    "sumber": [
+      {"tipe": "website", "nama": "iWareBatik.org (UNESCO)", "url": "https://iwarebatik.org"},
+      {"tipe": "pemerintah", "nama": "Warisan Budaya Takbenda, Kemendikbud RI"}
+    ]
+  },
+  {
+    "id": "jambi",
+    "nama": "Jambi",
+    "provinsi": "Jambi",
+    "karakteristik": "Motif khas Melayu-Sumatera dengan pengaruh budaya Sriwijaya. Motif angso duo, durian pecah, kapal sanggat. Warna hangat merah-kuning emas.",
+    "motif_khas": ["batik-jambi"],
+    "teknik_dominan": "batik_tulis",
+    "warna_dominan": ["merah", "kuning emas", "hijau", "cokelat"],
+    "sejarah": "Tradisi batik diperkirakan sejak era Sriwijaya (abad ke-7). Candi Muaro Jambi menjadi bukti tertua tradisi tekstil di Sumatera.",
+    "sentra_produksi": ["Kota Jambi", "Muaro Jambi"],
+    "sumber": [
+      {"tipe": "website", "nama": "iWareBatik.org (UNESCO)", "url": "https://iwarebatik.org"},
+      {"tipe": "pemerintah", "nama": "Warisan Budaya Takbenda, Kemendikbud RI"}
+    ]
+  }
+]

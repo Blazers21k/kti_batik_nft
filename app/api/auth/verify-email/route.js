@@ -35,7 +35,7 @@ export async function POST(request) {
     }
 
     // Verifikasi OTP dan buat akun
-    const result = verifyOTPAndCreateUser(email, otpCode);
+    const result = await verifyOTPAndCreateUser(email, otpCode);
 
     if (!result.success) {
       return NextResponse.json(

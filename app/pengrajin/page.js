@@ -51,6 +51,15 @@ export default function Home() {
   const [nfcCheck, setNfcCheck] = useState(null); // { isRegistered, tokenName, tokenId } | null
   const [isCheckingNfc, setIsCheckingNfc] = useState(false);
 
+  // RAG & Acknowledgment states
+  const [aiReferences, setAiReferences] = useState([]); // Referensi dari RAG
+  const [ragUsed, setRagUsed] = useState(false); // Apakah RAG aktif
+  const [acknowledgments, setAcknowledgments] = useState({
+    aiAcknowledged: false,  // Saya paham uraian dibantu AI
+    originalWork: false     // Karya asli buatan saya
+  });
+  const [showSourcesModal, setShowSourcesModal] = useState(false); // Modal T&C sumber referensi
+
   // Ref untuk timer cleanup
   const recognitionTimerRef = useRef(null);
 
@@ -314,6 +323,9 @@ export default function Home() {
 
       if (data.success) {
         setPreviewText(data.result);
+        setAiReferences(data.references || []);
+        setRagUsed(data.ragUsed || false);
+        setAcknowledgments({ aiAcknowledged: false, originalWork: false });
         setStep(2);
         setStatus("");
       } else {
@@ -611,6 +623,70 @@ export default function Home() {
                 />
               </div>
 
+              {/* RAG References */}
+              {aiReferences.length > 0 && (
+                <div className="bg-purple-500/10 p-4 rounded-2xl border border-purple-500/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">📚 Referensi AI</span>
+                    {ragUsed && <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 rounded-full text-purple-300">RAG Active</span>}
+                  </div>
+                  <div className="space-y-2">
+                    {aiReferences.slice(0, 3).map((ref, i) => (
+                      <div key={i} className="p-2.5 bg-white/5 rounded-xl border border-white/5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-white">{ref.nama_motif}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/30 rounded text-purple-200">{ref.similarity}%</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">{ref.daerah_asal}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">📖 {ref.sumber}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Acknowledgment Checklist */}
+              <div className="bg-amber-500/10 p-4 rounded-2xl border border-amber-500/20">
+                <span className="text-xs font-bold text-amber-300 uppercase tracking-wider block mb-3">✅ Persetujuan Sebelum Minting</span>
+
+                <div className="space-y-3">
+                  {/* Checkbox 1: AI Acknowledgment */}
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={acknowledgments.aiAcknowledged}
+                      onChange={(e) => setAcknowledgments(prev => ({ ...prev, aiAcknowledged: e.target.checked }))}
+                      className="mt-0.5 w-4 h-4 accent-amber-500 rounded cursor-pointer flex-shrink-0"
+                    />
+                    <span className="text-xs text-slate-300 group-hover:text-white transition-colors leading-relaxed">
+                      Saya memahami bahwa uraian ciptaan ini <strong className="text-amber-300">dibantu oleh AI</strong> dan telah memeriksa serta menyetujui isinya.
+                    </span>
+                  </label>
+
+                  {/* Checkbox 2: Original Work */}
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={acknowledgments.originalWork}
+                      onChange={(e) => setAcknowledgments(prev => ({ ...prev, originalWork: e.target.checked }))}
+                      className="mt-0.5 w-4 h-4 accent-amber-500 rounded cursor-pointer flex-shrink-0"
+                    />
+                    <span className="text-xs text-slate-300 group-hover:text-white transition-colors leading-relaxed">
+                      Saya menyatakan bahwa karya batik yang didaftarkan adalah <strong className="text-amber-300">karya asli buatan saya sendiri</strong>.
+                    </span>
+                  </label>
+                </div>
+
+                {/* Tombol Lihat Sumber Referensi (T&C style) */}
+                <button
+                  type="button"
+                  onClick={() => setShowSourcesModal(true)}
+                  className="mt-3 w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-xs text-slate-400 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-1.5"
+                >
+                  📄 Lihat Sumber Referensi AI
+                </button>
+              </div>
+
               {/* Gas Estimation */}
               <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-600/30">
                 <div className="flex items-center justify-between mb-3">
@@ -644,17 +720,18 @@ export default function Home() {
               {/* Buttons */}
               <div className="flex gap-3">
                 <button
-                  onClick={() => { setStep(1); setError(""); setGasEstimate(null); }}
+                  onClick={() => { setStep(1); setError(""); setGasEstimate(null); setAcknowledgments({ aiAcknowledged: false, originalWork: false }); }}
                   className="flex-1 p-4 bg-white/5 border border-white/10 text-slate-300 rounded-xl font-bold text-xs hover:bg-white/10 transition-all"
                 >
                   ⬅ EDIT
                 </button>
                 <button
                   onClick={handleFinalMint}
-                  disabled={isMinting}
-                  className="flex-[2] p-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-[1.02] transition-all disabled:opacity-50"
+                  disabled={isMinting || !acknowledgments.aiAcknowledged || !acknowledgments.originalWork}
+                  className={`flex-[2] p-4 rounded-xl font-bold text-sm shadow-lg transition-all ${acknowledgments.aiAcknowledged && acknowledgments.originalWork ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-[1.02]' : 'bg-slate-700 text-slate-400 cursor-not-allowed shadow-none'} disabled:opacity-50`}
+                  title={!acknowledgments.aiAcknowledged || !acknowledgments.originalWork ? 'Centang semua persetujuan terlebih dahulu' : ''}
                 >
-                  {isMinting ? "⏳ MENCETAK..." : "✅ CETAK FINAL"}
+                  {isMinting ? "⏳ MENCETAK..." : !acknowledgments.aiAcknowledged || !acknowledgments.originalWork ? "🔒 CENTANG PERSETUJUAN" : "✅ CETAK FINAL"}
                 </button>
               </div>
             </div>
@@ -736,6 +813,53 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      {/* Sources Modal (T&C style) */}
+      {showSourcesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setShowSourcesModal(false)}>
+          <div className={`w-full max-w-md max-h-[80vh] overflow-y-auto rounded-3xl border shadow-2xl p-6 ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`} onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>📄 Sumber Referensi AI</h3>
+              <button onClick={() => setShowSourcesModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+
+            <div className={`text-xs leading-relaxed space-y-4 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              <p>Sistem AI pada NusantaraBatikChain menggunakan teknologi <strong>RAG (Retrieval-Augmented Generation)</strong> untuk menganalisis motif batik. Uraian ciptaan dihasilkan berdasarkan data dari sumber-sumber berikut:</p>
+
+              <div className="space-y-3">
+                <div className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                  <p className="font-bold text-amber-400">🏛️ iWareBatik.org</p>
+                  <p className="mt-1">Platform resmi di bawah UNESCO Chair in ICT to Develop and Promote Sustainable Tourism (Università della Svizzera italiana), bekerja sama dengan Sobat Budaya dan Bandung Fe Institute.</p>
+                </div>
+                <div className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                  <p className="font-bold text-amber-400">🇮🇩 Kementerian Kebudayaan RI</p>
+                  <p className="mt-1">Data Warisan Budaya Takbenda Indonesia (warisanbudaya.kemdikbud.go.id) — database resmi pemerintah untuk pencatatan karya budaya nasional.</p>
+                </div>
+                <div className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                  <p className="font-bold text-amber-400">🏭 Balai Besar Kerajinan dan Batik (BBKB)</p>
+                  <p className="mt-1">Kementerian Perindustrian RI — lembaga teknis yang menangani standardisasi dan pengembangan batik Indonesia.</p>
+                </div>
+                <div className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
+                  <p className="font-bold text-amber-400">📖 Literatur Akademis</p>
+                  <p className="mt-1">• Adi Kusrianto — <em>"Batik: Filosofi, Motif, dan Kegunaan"</em> (2013)<br/>• Hamzuri — <em>"Batik Klasik"</em> (Djambatan, 1994)<br/>• Museum Batik Yogyakarta & Museum Batik Indonesia TMII</p>
+                </div>
+              </div>
+
+              <div className={`p-3 rounded-xl border ${isDark ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
+                <p className="font-bold text-amber-400 mb-1">⚠️ Disclaimer</p>
+                <p>AI dapat membuat kesalahan dalam identifikasi motif. Hasil analisis bersifat <strong>rekomendasi</strong> dan perlu diverifikasi oleh pengrajin. Pengrajin bertanggung jawab penuh atas keakuratan uraian ciptaan final yang akan di-mint sebagai NFT.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSourcesModal(false)}
+              className="mt-4 w-full p-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-bold text-sm hover:scale-[1.02] transition-all"
+            >
+              Saya Mengerti
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Custom Animations */}
       <style jsx>{`

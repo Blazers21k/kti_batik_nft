@@ -1,0 +1,104 @@
+[
+  {
+    "id": "batik_tulis",
+    "nama": "Batik Tulis",
+    "deskripsi": "Teknik membatik tradisional menggunakan canting (alat tulis lilin) yang dicelupkan ke dalam malam (lilin batik) panas, kemudian digoreskan di atas kain untuk membentuk motif. Setiap titik dan garis dibuat satu per satu oleh tangan pengrajin.",
+    "alat": ["canting tulis (cucuk tunggal, ganda, atau ceret)", "malam/lilin batik", "kompor/anglo", "wajan kecil untuk malam", "gawangan (penyangga kain)", "dingklik (bangku rendah)"],
+    "proses": [
+      "Membuat pola/desain di atas kain (nyorek/molani)",
+      "Melukis malam dengan canting mengikuti pola (nglowongi)",
+      "Mengisi motif dengan isen-isen (nisen-i)",
+      "Menutup bagian yang tidak diwarna dengan malam (nembok)",
+      "Pencelupan warna (medel/nyoga)",
+      "Menghilangkan malam dengan air mendidih (nglorod)",
+      "Proses pewarnaan dan pelorodan diulang untuk warna tambahan"
+    ],
+    "ciri_khas": "Tidak ada motif yang 100% identik karena setiap goresan dibuat tangan. Garis sedikit tidak sempurna (ada getaran alami tangan), titik-titik tidak seragam. Malam meresap ke kedua sisi kain.",
+    "durasi_pembuatan": "2 minggu hingga 6 bulan tergantung kerumitan motif",
+    "harga_relatif": "tertinggi",
+    "daerah_utama": ["Yogyakarta", "Surakarta", "Pekalongan", "Cirebon", "Lasem", "Tuban", "Madura"],
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"},
+      {"tipe": "buku", "judul": "Batik: Filosofi, Motif, dan Kegunaan", "penulis": "Adi Kusrianto", "tahun": 2013}
+    ]
+  },
+  {
+    "id": "batik_cap",
+    "nama": "Batik Cap",
+    "deskripsi": "Teknik membatik menggunakan cap (stempel) yang terbuat dari tembaga atau kuningan yang dibentuk sesuai motif. Cap dicelupkan ke malam panas lalu dicapkan ke kain, menghasilkan motif yang seragam dan lebih cepat dibandingkan batik tulis.",
+    "alat": ["cap tembaga/kuningan", "malam/lilin batik", "bantal cap (bantalan kain untuk meratakan malam)", "meja cap"],
+    "proses": [
+      "Memanaskan malam dalam wajan besar",
+      "Mencelupkan cap ke malam panas",
+      "Mencapkan cap ke atas kain secara berulang mengikuti pola",
+      "Proses pewarnaan (celup)",
+      "Pelorodan (menghilangkan malam)"
+    ],
+    "ciri_khas": "Motif berulang identik dan seragam. Garis tegas dan konsisten. Malam hanya meresap di satu sisi kain. Lebih cepat diproduksi dibanding batik tulis.",
+    "durasi_pembuatan": "1 hari hingga 1 minggu",
+    "harga_relatif": "menengah",
+    "daerah_utama": ["Pekalongan", "Solo", "Yogyakarta"],
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"},
+      {"tipe": "buku", "judul": "Batik: Filosofi, Motif, dan Kegunaan", "penulis": "Adi Kusrianto", "tahun": 2013}
+    ]
+  },
+  {
+    "id": "batik_kombinasi",
+    "nama": "Batik Kombinasi (Tulis-Cap)",
+    "deskripsi": "Perpaduan teknik batik cap untuk motif utama yang berulang dan batik tulis untuk detail, isen-isen, dan elemen dekoratif tambahan. Menghasilkan kualitas mendekati batik tulis dengan waktu produksi lebih efisien.",
+    "alat": ["cap tembaga", "canting tulis", "malam", "kompor"],
+    "proses": [
+      "Cap motif utama terlebih dahulu",
+      "Tambahkan detail dan isen-isen dengan canting tulis",
+      "Proses pewarnaan dan pelorodan seperti biasa"
+    ],
+    "ciri_khas": "Motif utama seragam (hasil cap) namun detail pengisi bervariasi (hasil tulis). Menggabungkan efisiensi cap dengan keindahan tulis.",
+    "durasi_pembuatan": "3 hari hingga 2 minggu",
+    "harga_relatif": "menengah_atas",
+    "daerah_utama": ["Pekalongan", "Solo", "Yogyakarta"],
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"}
+    ]
+  },
+  {
+    "id": "batik_printing",
+    "nama": "Batik Printing (Sablon)",
+    "deskripsi": "Teknik cetak modern menggunakan mesin printing/sablon untuk mentransfer motif batik ke atas kain. Secara teknis bukan 'batik' dalam arti tradisional karena tidak menggunakan malam, namun umum disebut 'batik printing' di pasaran.",
+    "alat": ["mesin printing/sablon", "screen sablon", "tinta tekstil"],
+    "proses": [
+      "Desain motif secara digital",
+      "Pembuatan screen sablon",
+      "Cetak motif ke kain menggunakan mesin",
+      "Proses finishing (fiksasi warna)"
+    ],
+    "ciri_khas": "Motif sangat presisi dan seragam. Warna tajam dan konsisten. Tidak ada aroma malam. Warna hanya di satu sisi kain. Produksi massal sangat cepat.",
+    "durasi_pembuatan": "hitungan jam untuk ratusan meter",
+    "harga_relatif": "rendah",
+    "daerah_utama": ["Pekalongan", "Solo", "berbagai kota industri"],
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"}
+    ]
+  },
+  {
+    "id": "eco_print",
+    "nama": "Eco Print (Batik Eco)",
+    "deskripsi": "Teknik modern yang menggunakan daun, bunga, dan bahan alam langsung sebagai 'cetakan' motif di atas kain. Daun ditata di atas kain, digulung, lalu dikukus sehingga pigmen alami daun berpindah ke kain membentuk motif berupa jejak daun.",
+    "alat": ["daun dan bunga segar", "kain (sutra, katun)", "tawas/mordant", "panci kukus", "tali pengikat"],
+    "proses": [
+      "Mordanting kain (perendaman tawas agar warna menempel)",
+      "Menata daun dan bunga di atas kain",
+      "Menggulung kain rapat dan mengikatnya",
+      "Mengukus gulungan selama 1-2 jam",
+      "Membuka gulungan dan membersihkan sisa daun"
+    ],
+    "ciri_khas": "Setiap hasil unik karena menggunakan daun asli. Warna alami dan lembut. Motif berupa siluet/jejak daun yang otentik. Ramah lingkungan (zero chemical waste).",
+    "durasi_pembuatan": "1-3 hari",
+    "harga_relatif": "menengah",
+    "daerah_utama": ["tersebar di berbagai daerah, populer di komunitas kreatif"],
+    "sumber": [
+      {"tipe": "institusi", "nama": "Balai Besar Kerajinan dan Batik, Kemenperin"},
+      {"tipe": "website", "nama": "iWareBatik.org (UNESCO)", "url": "https://iwarebatik.org"}
+    ]
+  }
+]

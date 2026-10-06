@@ -10,8 +10,8 @@ import { sendResetPasswordEmail } from "../../../lib/email";
 
 export async function POST(request) {
   try {
-    // Rate Limit: 3 percobaan forgot-password per menit per IP
-    const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 3 });
+    // Rate Limit: 20 percobaan forgot-password per menit per IP
+    const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 20 });
     if (rateLimitError) return rateLimitError;
 
     const ip = getClientIP(request);

@@ -19,7 +19,7 @@ export async function POST(request) {
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
     if (token) {
-      destroySession(token);
+      await destroySession(token);
     }
 
     return NextResponse.json({
