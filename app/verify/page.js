@@ -453,7 +453,7 @@ function VerifyContent() {
 
             {/* Owner */}
             <footer className="text-center pt-4 border-t border-white/10">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Pemilik Saat Ini</p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Wallet Operasional NBC</p>
               <p className="font-mono text-[10px] text-slate-400 bg-white/5 inline-block px-3 py-2 rounded-lg mt-2 truncate max-w-full border border-white/10">
                 {data.owner}
               </p>
