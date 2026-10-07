@@ -457,6 +457,7 @@ function VerifyContent() {
               <p className="font-mono text-[10px] text-slate-400 bg-white/5 inline-block px-3 py-2 rounded-lg mt-2 truncate max-w-full border border-white/10">
                 {data.owner}
               </p>
+              <p className="text-[10px] text-slate-500 mt-2">Dikelola oleh admin NBC</p>
             </footer>
           </main>
         </div>
