@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRequestUser, isAdminUser } from "../../../lib/access-control";
-import { getCertificateRecord, saveSupplementalMaterials } from "../../../lib/certificate-store";
-import { getMetadataMaterials, readCertificateFromChain } from "../../../lib/certificate-chain";
+import { getCertificateRecord, saveSupplementalCertificateData } from "../../../lib/certificate-store";
+import { getMetadataMaterials, getMetadataTechnique, readCertificateFromChain } from "../../../lib/certificate-chain";
 import { enforceRateLimit, safeErrorResponse, sanitizeInput } from "../../../lib/security";
 
 export const runtime = "nodejs";
@@ -32,6 +32,8 @@ export async function GET(request, { params }) {
     const chainMaterials = getMetadataMaterials(certificate.metadata);
     const supplementalMaterials = record?.supplemental_materials || [];
     const materials = chainMaterials.length ? chainMaterials : supplementalMaterials;
+    const chainTechnique = getMetadataTechnique(certificate.metadata);
+    const technique = chainTechnique || record?.supplemental_technique || null;
     return NextResponse.json({
       success: true,
       data: {
@@ -42,6 +44,8 @@ export async function GET(request, { params }) {
         issuedAt: getMetadataIssueDate(certificate.metadata),
         materials,
         materialsSource: chainMaterials.length ? "blockchain" : materials.length ? "application" : null,
+        technique,
+        techniqueSource: chainTechnique ? "blockchain" : technique ? "application" : null,
         metadata: certificate.metadata,
         artisanUserId: record?.artisan_user_id || null,
       },
@@ -70,25 +74,42 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Anda hanya dapat mengelola sertifikat yang ditautkan ke akun Anda." }, { status: 403 });
     }
 
+    const parsedBody = await request.json().catch(() => ({}));
+    const body = parsedBody && typeof parsedBody === "object" ? parsedBody : {};
+    const hasMaterials = Object.prototype.hasOwnProperty.call(body, "materials");
+    const hasTechnique = Object.prototype.hasOwnProperty.call(body, "technique");
+    if (!hasMaterials && !hasTechnique) {
+      return NextResponse.json({ error: "Isi bahan atau jenis batik yang ingin dilengkapi." }, { status: 400 });
+    }
+
     const chainCertificate = await readCertificateFromChain(tokenId);
-    if (getMetadataMaterials(chainCertificate.metadata).length > 0) {
+    if (hasMaterials && getMetadataMaterials(chainCertificate.metadata).length > 0) {
       return NextResponse.json({ error: "Bahan sertifikat ini sudah tercatat pada metadata blockchain." }, { status: 409 });
     }
-
-    const body = await request.json().catch(() => ({}));
-    const materials = Array.isArray(body.materials)
-      ? [...new Set(body.materials.map((value) => sanitizeInput(value, 120)).filter(Boolean))].slice(0, 30)
-      : [];
-    if (materials.length === 0) {
-      return NextResponse.json({ error: "Pilih atau ketik minimal satu bahan." }, { status: 400 });
+    if (hasTechnique && getMetadataTechnique(chainCertificate.metadata)) {
+      return NextResponse.json({ error: "Jenis batik sertifikat ini sudah tercatat pada metadata blockchain." }, { status: 409 });
     }
 
-    const saved = await saveSupplementalMaterials(tokenId, materials, user.id);
+    const materials = hasMaterials
+      ? (Array.isArray(body.materials)
+          ? [...new Set(body.materials.map((value) => sanitizeInput(value, 120)).filter(Boolean))].slice(0, 30)
+          : [])
+      : undefined;
+    if (hasMaterials && materials.length === 0) {
+      return NextResponse.json({ error: "Pilih atau ketik minimal satu bahan." }, { status: 400 });
+    }
+    const technique = hasTechnique ? sanitizeInput(body.technique, 80) : undefined;
+    if (hasTechnique && !technique) {
+      return NextResponse.json({ error: "Isi jenis batik yang ingin dilengkapi." }, { status: 400 });
+    }
+
+    const saved = await saveSupplementalCertificateData(tokenId, { materials, technique }, user.id);
     if (!saved) return NextResponse.json({ error: "Data sertifikat tidak ditemukan." }, { status: 404 });
 
     return NextResponse.json({
       success: true,
       materials: saved.supplemental_materials,
+      technique: saved.supplemental_technique,
       updatedAt: saved.updated_at,
       dataLocation: "app",
     });

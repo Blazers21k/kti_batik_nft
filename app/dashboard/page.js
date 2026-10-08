@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const [assignmentArtisanId, setAssignmentArtisanId] = useState("");
   const [adminMessage, setAdminMessage] = useState("");
   const [materialsDrafts, setMaterialsDrafts] = useState({});
+  const [techniqueDrafts, setTechniqueDrafts] = useState({});
 
   const fetchKarya = useCallback(async (token, isAdmin) => {
     try {
@@ -45,6 +46,8 @@ export default function DashboardPage() {
         setAdminCertificateRecords(records);
         setKarya((galleryData.data || []).map((item) => ({
           ...item,
+          canEditTechnique: (!item.techniqueSource || item.techniqueSource === "application")
+            && assignedIds.has(String(item.tokenId)),
           canEditMaterials: !item.materialsSource || item.materialsSource === "application"
             ? assignedIds.has(String(item.tokenId))
             : false,
@@ -54,7 +57,11 @@ export default function DashboardPage() {
         const ownedIds = new Set((mineData.records || []).map((record) => String(record.tokenId)));
         setKarya((galleryData.data || [])
           .filter((item) => ownedIds.has(String(item.tokenId)))
-          .map((item) => ({ ...item, canEditMaterials: !item.materialsSource || item.materialsSource === "application" })));
+          .map((item) => ({
+            ...item,
+            canEditMaterials: !item.materialsSource || item.materialsSource === "application",
+            canEditTechnique: !item.techniqueSource || item.techniqueSource === "application",
+          })));
       }
     } catch (err) {
       console.error("Gagal memuat karya:", err);
@@ -130,22 +137,32 @@ export default function DashboardPage() {
     }
   };
 
-  const saveLegacyMaterials = async (tokenId) => {
+  const saveSupplementalData = async (tokenId) => {
     const token = localStorage.getItem("user_token");
-    const materials = (materialsDrafts[tokenId] || "").split(",").map((item) => item.trim()).filter(Boolean);
-    setAdminMessage("Menyimpan bahan sertifikat…");
+    const item = karya.find((certificate) => String(certificate.tokenId) === String(tokenId));
+    const body = {};
+    if (item?.canEditMaterials) {
+      const materials = (materialsDrafts[tokenId] ?? (item.materials || []).join(", "))
+        .split(",").map((value) => value.trim()).filter(Boolean);
+      if (materials.length) body.materials = materials;
+    }
+    if (item?.canEditTechnique) {
+      const technique = techniqueDrafts[tokenId] ?? (item.techniqueSource === "application" ? item.technique || "" : "");
+      if (technique.trim()) body.technique = technique.trim();
+    }
+    setAdminMessage("Menyimpan data pelengkap sertifikat…");
     try {
       const response = await fetch(`/api/certificates/${tokenId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ materials }),
+        body: JSON.stringify(body),
       });
       const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.error || "Gagal menyimpan bahan.");
-      setAdminMessage(`Bahan sertifikat #${tokenId} tersimpan sebagai data pelengkap aplikasi.`);
+      if (!response.ok || !result.success) throw new Error(result.error || "Gagal menyimpan data pelengkap.");
+      setAdminMessage(`Jenis batik dan bahan sertifikat #${tokenId} tersimpan sebagai data pelengkap aplikasi.`);
       await fetchKarya(token, Boolean(session?.isAdmin));
     } catch (error) {
-      setAdminMessage(error.message || "Gagal menyimpan bahan.");
+      setAdminMessage(error.message || "Gagal menyimpan data pelengkap.");
     }
   };
 
@@ -378,6 +395,7 @@ export default function DashboardPage() {
                         <div>
                           <p className="text-xs text-slate-500">Jenis Batik</p>
                           <p className="text-sm text-white mt-1">{item.technique || item.attributes?.find(a => ["Jenis Batik", "Teknik Batik", "Teknik Pembuatan"].includes(a.trait_type))?.value || "Belum dicatat"}</p>
+                          {item.techniqueSource === "application" && <p className="mt-1 text-[10px] text-amber-300/80">Data pelengkap aplikasi; metadata blockchain lama tidak diubah.</p>}
                         </div>
 
                         <div>
@@ -386,17 +404,33 @@ export default function DashboardPage() {
                           {item.materialsSource === "application" && <p className="mt-1 text-[10px] text-amber-300/80">Data pelengkap aplikasi; metadata blockchain lama tidak diubah.</p>}
                         </div>
 
-                        {item.canEditMaterials && (
+                        {(item.canEditMaterials || item.canEditTechnique) && (
                           <div className="space-y-2" onClick={(event) => event.stopPropagation()}>
-                            <label className="block text-xs text-slate-400" htmlFor={`materials-${item.tokenId}`}>Lengkapi bahan (pisahkan dengan koma)</label>
-                            <textarea
-                              id={`materials-${item.tokenId}`}
-                              value={materialsDrafts[item.tokenId] ?? (item.materials || []).join(", ")}
-                              onChange={(event) => setMaterialsDrafts((prev) => ({ ...prev, [item.tokenId]: event.target.value }))}
-                              className="w-full rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white outline-none focus:border-amber-500/50"
-                              rows={2}
-                            />
-                            <button type="button" onClick={() => saveLegacyMaterials(item.tokenId)} className="rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400">Simpan bahan</button>
+                            {item.canEditTechnique && (
+                              <>
+                                <label className="block text-xs text-slate-400" htmlFor={`technique-${item.tokenId}`}>Lengkapi jenis batik</label>
+                                <input
+                                  id={`technique-${item.tokenId}`}
+                                  value={techniqueDrafts[item.tokenId] ?? (item.techniqueSource === "application" ? item.technique || "" : "")}
+                                  onChange={(event) => setTechniqueDrafts((prev) => ({ ...prev, [item.tokenId]: event.target.value }))}
+                                  placeholder="Contoh: Printing"
+                                  className="w-full rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white outline-none focus:border-amber-500/50"
+                                />
+                              </>
+                            )}
+                            {item.canEditMaterials && (
+                              <>
+                                <label className="block text-xs text-slate-400" htmlFor={`materials-${item.tokenId}`}>Lengkapi bahan (pisahkan dengan koma)</label>
+                                <textarea
+                                  id={`materials-${item.tokenId}`}
+                                  value={materialsDrafts[item.tokenId] ?? (item.materials || []).join(", ")}
+                                  onChange={(event) => setMaterialsDrafts((prev) => ({ ...prev, [item.tokenId]: event.target.value }))}
+                                  className="w-full rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white outline-none focus:border-amber-500/50"
+                                  rows={2}
+                                />
+                              </>
+                            )}
+                            <button type="button" onClick={() => saveSupplementalData(item.tokenId)} className="rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400">Simpan data pelengkap</button>
                           </div>
                         )}
 

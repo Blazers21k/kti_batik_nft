@@ -47,18 +47,21 @@ export async function POST(request) {
 
     let materials = getMetadataMaterials(metadata);
     let materialsSource = materials.length ? "blockchain" : null;
-    if (!materials.length) {
-      try {
-        const record = await getCertificateRecord(tokenId);
+    let supplementalTechnique = null;
+    try {
+      const record = await getCertificateRecord(tokenId);
+      if (!materials.length) {
         materials = record?.supplemental_materials || [];
         if (materials.length) materialsSource = "application";
-      } catch (error) {
-        console.warn("Data pelengkap sertifikat tidak tersedia:", error.message);
       }
+      supplementalTechnique = record?.supplemental_technique || null;
+    } catch (error) {
+      console.warn("Data pelengkap sertifikat tidak tersedia:", error.message);
     }
 
     const issuedAt = getMetadataIssueDate(metadata);
-    const technique = getMetadataTechnique(metadata);
+    const chainTechnique = getMetadataTechnique(metadata);
+    const technique = chainTechnique || supplementalTechnique;
     metadata.materials = materials;
     metadata.issuedAt = issuedAt;
     metadata.technique = technique;
@@ -77,6 +80,7 @@ export async function POST(request) {
         materials,
         materialsSource,
         technique,
+        techniqueSource: chainTechnique ? "blockchain" : technique ? "application" : null,
         issuedAt,
       },
     });

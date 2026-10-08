@@ -164,6 +164,7 @@ function VerificationContent() {
               <section className={`rounded-2xl p-4 ${isDark ? "bg-white/5" : "bg-slate-50"}`}>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Jenis Batik</p>
                 <p className="mt-1 text-sm">{data.technique || "Belum dicatat"}</p>
+                {data.techniqueSource === "application" && <p className="mt-2 text-[10px] text-amber-400/80">Data pelengkap aplikasi; metadata blockchain lama tidak diubah.</p>}
               </section>
 
               <section className={`rounded-2xl p-4 ${isDark ? "bg-white/5" : "bg-slate-50"}`}>

@@ -151,7 +151,7 @@ export async function GET(request) {
         // Filter null values
         const validNfts = nfts.filter(n => n !== null);
 
-        // Merge legacy materials supplements from Neon while keeping blockchain metadata authoritative.
+        // Merge legacy supplements from Neon while keeping blockchain metadata authoritative.
         let recordsByTokenId = new Map();
         try {
             const records = await getCertificateRecords(validNfts.map((nft) => nft.tokenId));
@@ -165,10 +165,13 @@ export async function GET(request) {
             const chainMaterials = nft.materials || [];
             const supplementalMaterials = record?.supplemental_materials || [];
             const materials = chainMaterials.length ? chainMaterials : supplementalMaterials;
+            const technique = nft.technique || record?.supplemental_technique || null;
             return {
                 ...nft,
                 materials,
                 materialsSource: chainMaterials.length ? "blockchain" : materials.length ? "application" : null,
+                technique,
+                techniqueSource: nft.technique ? "blockchain" : technique ? "application" : null,
             };
         });
 

@@ -24,6 +24,9 @@ function explainMissingTable(error) {
   if (error?.code === "42P01") {
     return new Error("Certificate database is not initialized; run scripts/certificate-records.sql");
   }
+  if (error?.code === "42703" && error?.column === "supplemental_technique") {
+    return new Error("Certificate database schema is outdated; rerun scripts/certificate-records.sql");
+  }
   return error;
 }
 
@@ -46,7 +49,7 @@ export async function registerNewCertificate(tokenId, artisanUserId) {
 
 export async function listCertificateRecords() {
   const result = await query(
-    `SELECT token_id, artisan_user_id, supplemental_materials, linked_by, updated_by, updated_at
+    `SELECT token_id, artisan_user_id, supplemental_materials, supplemental_technique, linked_by, updated_by, updated_at
      FROM public.certificate_records ORDER BY token_id`
   );
   return result.rows;
@@ -54,7 +57,7 @@ export async function listCertificateRecords() {
 
 export async function listCertificateRecordsForUser(userId) {
   const result = await query(
-    `SELECT token_id, artisan_user_id, supplemental_materials, linked_by, updated_by, updated_at
+    `SELECT token_id, artisan_user_id, supplemental_materials, supplemental_technique, linked_by, updated_by, updated_at
      FROM public.certificate_records WHERE artisan_user_id = $1 ORDER BY token_id`,
     [userId]
   );
@@ -64,7 +67,7 @@ export async function listCertificateRecordsForUser(userId) {
 export async function getCertificateRecords(tokenIds) {
   if (!tokenIds?.length) return [];
   const result = await query(
-    `SELECT token_id, artisan_user_id, supplemental_materials, linked_by, updated_by, updated_at
+    `SELECT token_id, artisan_user_id, supplemental_materials, supplemental_technique, linked_by, updated_by, updated_at
      FROM public.certificate_records WHERE token_id = ANY($1::text[])`,
     [tokenIds.map(String)]
   );
@@ -73,7 +76,7 @@ export async function getCertificateRecords(tokenIds) {
 
 export async function getCertificateRecord(tokenId) {
   const result = await query(
-    `SELECT token_id, artisan_user_id, supplemental_materials, linked_by, updated_by, updated_at
+    `SELECT token_id, artisan_user_id, supplemental_materials, supplemental_technique, linked_by, updated_by, updated_at
      FROM public.certificate_records WHERE token_id = $1`,
     [String(tokenId)]
   );
@@ -92,13 +95,15 @@ export async function assignCertificate(tokenId, artisanUserId, adminUserId) {
   return result.rows[0];
 }
 
-export async function saveSupplementalMaterials(tokenId, materials, userId) {
+export async function saveSupplementalCertificateData(tokenId, { materials, technique }, userId) {
   const result = await query(
     `UPDATE public.certificate_records
-     SET supplemental_materials = $1::jsonb, updated_by = $2, updated_at = NOW()
-     WHERE token_id = $3
-     RETURNING token_id, artisan_user_id, supplemental_materials, updated_at`,
-    [JSON.stringify(materials), userId, String(tokenId)]
+     SET supplemental_materials = COALESCE($1::jsonb, supplemental_materials),
+         supplemental_technique = COALESCE($2, supplemental_technique),
+         updated_by = $3, updated_at = NOW()
+     WHERE token_id = $4
+     RETURNING token_id, artisan_user_id, supplemental_materials, supplemental_technique, updated_at`,
+    [materials === undefined ? null : JSON.stringify(materials), technique ?? null, userId, String(tokenId)]
   );
   return result.rows[0] || null;
 }
