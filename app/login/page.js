@@ -39,7 +39,7 @@ export default function LoginPage() {
       localStorage.setItem("user_data", JSON.stringify(data.user));
 
       router.push("/dashboard");
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan koneksi");
       setIsLoading(false);
     }

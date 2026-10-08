@@ -1,20 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useThemePreference, setThemePreference } from "../lib/client-preferences";
 
 export default function ThemeToggle() {
-  const [isDark, setIsDark] = useState(true);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("nbc-theme");
-    if (saved) setIsDark(saved === "dark");
-  }, []);
+  const isDark = useThemePreference();
 
   const toggleTheme = () => {
-    const next = !isDark;
-    setIsDark(next);
-    localStorage.setItem("nbc-theme", next ? "dark" : "light");
-    // Dispatch event agar halaman lain bisa listen
-    window.dispatchEvent(new CustomEvent("theme-change", { detail: { isDark: next } }));
+    setThemePreference(!isDark);
   };
 
   return (
@@ -46,16 +37,5 @@ export default function ThemeToggle() {
 
 // Hook untuk halaman lain menggunakan theme
 export function useTheme() {
-  const [isDark, setIsDark] = useState(true);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("nbc-theme");
-    if (saved) setIsDark(saved === "dark");
-
-    const handler = (e) => setIsDark(e.detail.isDark);
-    window.addEventListener("theme-change", handler);
-    return () => window.removeEventListener("theme-change", handler);
-  }, []);
-
-  return isDark;
+  return useThemePreference();
 }

@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import METADATA_OVERRIDES from "../../config/metadata-overrides";
 import { enforceRateLimit, sanitizeInput, safeErrorResponse } from "../../lib/security";
 import { getClientIP } from "../../lib/rate-limit";
+import { getCertificateRecords } from "../../lib/certificate-store";
+import { getMetadataIssueDate, getMetadataMaterials, getMetadataTechnique } from "../../lib/certificate-chain";
 
 export async function GET(request) {
     try {
@@ -59,12 +61,12 @@ export async function GET(request) {
                 try {
                     const tokenId = await contract.tokenByIndex(i);
                     tokens.push(Number(tokenId));
-                } catch (e) {
+                } catch {
                     // Jika tokenByIndex tidak tersedia, fallback ke sequential
                     tokens.push(i + 1);
                 }
             }
-        } catch (e) {
+        } catch {
             console.log("ℹ️ totalSupply tidak tersedia, mencoba method alternatif...");
 
             // Method 2: Scan sequential token IDs (1-50)
@@ -134,6 +136,9 @@ export async function GET(request) {
                         owner: owner,
                         nfcUid: nfcUid,
                         attributes: metadata.attributes || [],
+                        issuedAt: getMetadataIssueDate(metadata),
+                        technique: getMetadataTechnique(metadata),
+                        materials: getMetadataMaterials(metadata),
                         verifyUrl: `/verify?id=${tokenId}`
                     };
                 } catch (e) {
@@ -146,13 +151,34 @@ export async function GET(request) {
         // Filter null values
         const validNfts = nfts.filter(n => n !== null);
 
+        // Merge legacy materials supplements from Neon while keeping blockchain metadata authoritative.
+        let recordsByTokenId = new Map();
+        try {
+            const records = await getCertificateRecords(validNfts.map((nft) => nft.tokenId));
+            recordsByTokenId = new Map(records.map((record) => [record.token_id, record]));
+        } catch (error) {
+            console.warn("Data pelengkap sertifikat belum tersedia:", error.message);
+        }
+
+        const enrichedNfts = validNfts.map((nft) => {
+            const record = recordsByTokenId.get(nft.tokenId);
+            const chainMaterials = nft.materials || [];
+            const supplementalMaterials = record?.supplemental_materials || [];
+            const materials = chainMaterials.length ? chainMaterials : supplementalMaterials;
+            return {
+                ...nft,
+                materials,
+                materialsSource: chainMaterials.length ? "blockchain" : materials.length ? "application" : null,
+            };
+        });
+
         // Filter by pengrajin name if provided (dengan sanitasi)
         const { searchParams } = new URL(request.url);
         const pengrajinFilter = sanitizeInput(searchParams.get("pengrajin"), 200);
 
-        let filteredNfts = validNfts;
+        let filteredNfts = enrichedNfts;
         if (pengrajinFilter) {
-            filteredNfts = validNfts.filter(nft => {
+            filteredNfts = enrichedNfts.filter(nft => {
                 // Check name field
                 if (nft.name?.toLowerCase().includes(pengrajinFilter.toLowerCase())) return true;
                 // Check attributes for pengrajin name

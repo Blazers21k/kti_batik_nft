@@ -18,3 +18,19 @@ The database stores the same JSON document fields as the old file:
 `users`, `sessions`, `pendingVerifications`, and `passwordResets`. Writes use a
 PostgreSQL transaction and row lock so simultaneous auth requests do not
 overwrite each other's updates.
+
+## Certificate ownership and legacy materials
+
+1. In the same PostgreSQL database, run [`scripts/certificate-records.sql`](../scripts/certificate-records.sql).
+   This table links minted certificates to artisan accounts and stores app-only
+   material supplements for older certificates.
+2. In Vercel Project Settings → Environment Variables, add the server-only
+   variable `NBC_ADMIN_EMAILS` with value `nusantarabatikchain@gmail.com` for
+   Production, then redeploy. The account using this email must also be
+   registered in the app. Keep this variable out of `NEXT_PUBLIC_*`.
+3. Sign in with that admin account and use the dashboard to link each old
+   certificate to its artisan account. The artisan can then add missing
+   materials; blockchain/IPFS metadata is not changed.
+
+The new certificate flow will not mint until the certificate table exists, so
+run the SQL before deploying the feature.

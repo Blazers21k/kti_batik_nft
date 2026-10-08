@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { enforceRateLimit, safeErrorResponse } from "../../../lib/security";
 import { getClientIP } from "../../../lib/rate-limit";
 import { getSessionUser, refreshSession } from "../../../lib/auth";
+import { isAdminUser } from "../../../lib/access-control";
 
 // ═══════════════════════════════════════
 // GET /api/auth/me — Cek Session User
@@ -41,6 +42,7 @@ export async function GET(request) {
     return NextResponse.json({
       success: true,
       user,
+      isAdmin: isAdminUser(user),
     });
 
   } catch (error) {

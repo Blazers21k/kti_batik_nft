@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import { NextResponse } from "next/server";
 import { enforceRateLimit, sanitizeInput, safeErrorResponse, validatePayloadSize } from "../../lib/security";
 import { getClientIP } from "../../lib/rate-limit";
+import { isBatikTechnique } from "../../lib/batik-techniques";
 
 export async function POST(request) {
     try {
@@ -29,11 +30,18 @@ export async function POST(request) {
         const namaPengrajin = sanitizeInput(body.namaPengrajin, 200);
         const uidNFC = sanitizeInput(body.uidNFC, 100);
         const finalDescription = sanitizeInput(body.finalDescription, 10000);
+        const technique = sanitizeInput(body.technique, 80);
         const ipfsUrl = sanitizeInput(body.ipfsUrl, 500);
         const imageBase64 = body.imageBase64;
+        const materials = Array.isArray(body.materials)
+            ? [...new Set(body.materials.map((value) => sanitizeInput(value, 120)).filter(Boolean))].slice(0, 30)
+            : [];
 
         if (!uidNFC || !finalDescription || (!imageBase64 && !ipfsUrl)) {
             return NextResponse.json({ error: "Data tidak lengkap untuk estimasi" }, { status: 400 });
+        }
+        if (!isBatikTechnique(technique)) {
+            return NextResponse.json({ error: "Pilih jenis batik yang tersedia." }, { status: 400 });
         }
 
         const provider = new ethers.JsonRpcProvider(alchemyUrl);
@@ -44,13 +52,19 @@ export async function POST(request) {
         const imageData = ipfsUrl || imageBase64;
 
         // Buat metadata sama seperti di mint
+        const issuedAt = new Date().toISOString();
         const metadata = {
             name: `Batik Karya ${namaPengrajin || 'Pengrajin'}`,
             description: finalDescription,
             image: imageData,
+            technique,
+            materials,
             attributes: [
                 { trait_type: "NFC UID", value: uidNFC },
-                { trait_type: "Date", value: new Date().toISOString() }
+                { trait_type: "Jenis Batik", value: technique },
+                { trait_type: "Tanggal Terbit", value: issuedAt },
+                { trait_type: "Date", value: issuedAt },
+                ...materials.map((material) => ({ trait_type: "Bahan", value: material }))
             ]
         };
 

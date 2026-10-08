@@ -1,41 +1,22 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { notifyUserStorageChanged, useStoredUserData } from "../lib/client-preferences";
 
 export default function AccountButton() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
+  const storedUserData = useStoredUserData();
+  const user = useMemo(() => {
+    if (!storedUserData) return null;
+    try {
+      return JSON.parse(storedUserData);
+    } catch {
+      return null;
+    }
+  }, [storedUserData]);
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
-
-  useEffect(() => {
-    // Cek apakah sudah login
-    const token = localStorage.getItem("user_token");
-    const userData = localStorage.getItem("user_data");
-
-    if (token && userData) {
-      try {
-        const parsed = JSON.parse(userData);
-        setUser(parsed);
-      } catch {
-        // data corrupt
-      }
-    }
-
-    // Listen untuk perubahan login status
-    const handleStorage = () => {
-      const t = localStorage.getItem("user_token");
-      const d = localStorage.getItem("user_data");
-      if (t && d) {
-        try { setUser(JSON.parse(d)); } catch { setUser(null); }
-      } else {
-        setUser(null);
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -58,7 +39,7 @@ export default function AccountButton() {
     } catch {}
     localStorage.removeItem("user_token");
     localStorage.removeItem("user_data");
-    setUser(null);
+    notifyUserStorageChanged();
     setIsOpen(false);
     router.push("/login");
   };

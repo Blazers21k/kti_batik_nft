@@ -1,7 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+
+function imageSource(value) {
+  if (!value?.startsWith("ipfs://")) return value;
+  return `https://gateway.pinata.cloud/ipfs/${value.slice("ipfs://".length)}`;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -9,63 +15,137 @@ export default function DashboardPage() {
   const [karya, setKarya] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedKarya, setSelectedKarya] = useState(null);
+  const [adminArtisans, setAdminArtisans] = useState([]);
+  const [adminCertificateRecords, setAdminCertificateRecords] = useState([]);
+  const [assignmentTokenId, setAssignmentTokenId] = useState("");
+  const [assignmentArtisanId, setAssignmentArtisanId] = useState("");
+  const [adminMessage, setAdminMessage] = useState("");
+  const [materialsDrafts, setMaterialsDrafts] = useState({});
 
-  useEffect(() => {
-    checkSession();
-  }, []);
-
-  const checkSession = async () => {
-    const token = localStorage.getItem("user_token");
-    const userData = localStorage.getItem("user_data");
-
-    if (token && userData) {
-      try {
-        const res = await fetch("/api/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setSession({
-            nama: data.user.nama,
-            email: data.user.email,
-          });
-          fetchKarya(data.user.nama);
-          return;
-        } else {
-          // Session expired, hapus token
-          localStorage.removeItem("user_token");
-          localStorage.removeItem("user_data");
-        }
-      } catch {
-        // Network error, coba pakai cached data
-        try {
-          const cached = JSON.parse(userData);
-          setSession({ nama: cached.nama, email: cached.email });
-          fetchKarya(cached.nama);
-          return;
-        } catch {
-          localStorage.removeItem("user_token");
-          localStorage.removeItem("user_data");
-        }
-      }
-    }
-
-    // Tidak ada session, redirect ke login
-    router.push("/login");
-  };
-
-  const fetchKarya = async (nama) => {
+  const fetchKarya = useCallback(async (token, isAdmin) => {
     try {
-      const res = await fetch(`/api/gallery?pengrajin=${encodeURIComponent(nama)}`);
-      const data = await res.json();
-      if (data.sertifikat) {
-        setKarya(data.sertifikat);
+      const headers = { Authorization: `Bearer ${token}` };
+      const [galleryResponse, mineResponse] = await Promise.all([
+        fetch("/api/gallery"),
+        fetch("/api/certificates/mine", { headers }),
+      ]);
+      const [galleryData, mineData] = await Promise.all([galleryResponse.json(), mineResponse.json()]);
+      if (!galleryResponse.ok || !galleryData.success) throw new Error(galleryData.error || "Gagal memuat sertifikat.");
+
+      if (isAdmin) {
+        const [artisansResponse, recordsResponse] = await Promise.all([
+          fetch("/api/admin/artisans", { headers }),
+          fetch("/api/admin/certificates", { headers }),
+        ]);
+        const [artisansData, recordsData] = await Promise.all([artisansResponse.json(), recordsResponse.json()]);
+        if (!artisansResponse.ok || !recordsResponse.ok) throw new Error("Gagal memuat alat pengelolaan admin.");
+        const records = recordsData.records || [];
+        const assignedIds = new Set(records.map((record) => String(record.tokenId)));
+        setAdminArtisans(artisansData.artisans || []);
+        setAdminCertificateRecords(records);
+        setKarya((galleryData.data || []).map((item) => ({
+          ...item,
+          canEditMaterials: !item.materialsSource || item.materialsSource === "application"
+            ? assignedIds.has(String(item.tokenId))
+            : false,
+        })));
+      } else {
+        if (!mineResponse.ok || !mineData.success) throw new Error(mineData.error || "Gagal memuat sertifikat akun.");
+        const ownedIds = new Set((mineData.records || []).map((record) => String(record.tokenId)));
+        setKarya((galleryData.data || [])
+          .filter((item) => ownedIds.has(String(item.tokenId)))
+          .map((item) => ({ ...item, canEditMaterials: !item.materialsSource || item.materialsSource === "application" })));
       }
     } catch (err) {
       console.error("Gagal memuat karya:", err);
+      setAdminMessage(err.message || "Gagal memuat data sertifikat.");
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const token = localStorage.getItem("user_token");
+      const userData = localStorage.getItem("user_data");
+
+      if (token && userData) {
+        try {
+          const res = await fetch("/api/auth/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const nextSession = {
+              nama: data.user.nama,
+              email: data.user.email,
+              isAdmin: Boolean(data.isAdmin),
+            };
+            setSession(nextSession);
+            fetchKarya(token, nextSession.isAdmin);
+            return;
+          } else {
+            localStorage.removeItem("user_token");
+            localStorage.removeItem("user_data");
+          }
+        } catch {
+          try {
+            const cached = JSON.parse(userData);
+            const nextSession = { nama: cached.nama, email: cached.email, isAdmin: false };
+            setSession(nextSession);
+            fetchKarya(token, false);
+            return;
+          } catch {
+            localStorage.removeItem("user_token");
+            localStorage.removeItem("user_data");
+          }
+        }
+      }
+
+      router.push("/login");
+    };
+
+    checkSession();
+  }, [fetchKarya, router]);
+
+  const assignLegacyCertificate = async () => {
+    if (!assignmentTokenId || !assignmentArtisanId) return;
+    const token = localStorage.getItem("user_token");
+    setAdminMessage("Menghubungkan sertifikat ke akun pengrajin…");
+    try {
+      const response = await fetch(`/api/admin/certificates/${assignmentTokenId}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ artisanUserId: assignmentArtisanId }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || "Gagal menghubungkan sertifikat.");
+      setAdminMessage(`Sertifikat #${assignmentTokenId} berhasil ditautkan.`);
+      setAssignmentTokenId("");
+      setAssignmentArtisanId("");
+      await fetchKarya(token, true);
+    } catch (error) {
+      setAdminMessage(error.message || "Gagal menghubungkan sertifikat.");
+    }
+  };
+
+  const saveLegacyMaterials = async (tokenId) => {
+    const token = localStorage.getItem("user_token");
+    const materials = (materialsDrafts[tokenId] || "").split(",").map((item) => item.trim()).filter(Boolean);
+    setAdminMessage("Menyimpan bahan sertifikat…");
+    try {
+      const response = await fetch(`/api/certificates/${tokenId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ materials }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || "Gagal menyimpan bahan.");
+      setAdminMessage(`Bahan sertifikat #${tokenId} tersimpan sebagai data pelengkap aplikasi.`);
+      await fetchKarya(token, Boolean(session?.isAdmin));
+    } catch (error) {
+      setAdminMessage(error.message || "Gagal menyimpan bahan.");
     }
   };
 
@@ -109,8 +189,8 @@ export default function DashboardPage() {
                 {session.email}
               </p>
             </div>
-            <span className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-              🎨 Pengrajin
+              <span className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              {session.isAdmin ? "🛡️ Admin NBC" : "🎨 Pengrajin"}
             </span>
             <button
               onClick={handleLogout}
@@ -180,12 +260,34 @@ export default function DashboardPage() {
           */}
         </div>
 
+        {session.isAdmin && (
+          <section className="max-w-6xl mx-auto mb-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+            <h2 className="font-bold text-amber-200">Tautkan sertifikat lama ke akun pengrajin</h2>
+            <p className="mt-1 text-xs text-slate-400">Sertifikat lama perlu ditautkan satu kali sebelum pengrajin dapat melengkapi bahan.</p>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]">
+              <select value={assignmentTokenId} onChange={(event) => setAssignmentTokenId(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">
+                <option value="">Pilih sertifikat lama</option>
+                {karya.filter((item) => !adminCertificateRecords.some((record) => String(record.tokenId) === String(item.tokenId))).map((item) => (
+                  <option key={item.tokenId} value={item.tokenId}>#{item.tokenId} — {item.name}</option>
+                ))}
+              </select>
+              <select value={assignmentArtisanId} onChange={(event) => setAssignmentArtisanId(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">
+                <option value="">Pilih akun pengrajin</option>
+                {adminArtisans.map((artisan) => <option key={artisan.id} value={artisan.id}>{artisan.nama} ({artisan.email})</option>)}
+              </select>
+              <button type="button" onClick={assignLegacyCertificate} disabled={!assignmentTokenId || !assignmentArtisanId} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">Tautkan</button>
+            </div>
+          </section>
+        )}
+
+        {adminMessage && <p className="max-w-6xl mx-auto mb-5 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-300" role="status">{adminMessage}</p>}
+
         {/* Karya Grid */}
         <div className="max-w-6xl mx-auto">
           <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
             <span>📋</span>
-            <span>Karya Saya</span>
-            <span className="text-sm font-normal text-slate-500">— Daftar sertifikat yang telah diterbitkan</span>
+            <span>{session.isAdmin ? "Semua Sertifikat" : "Karya Saya"}</span>
+            <span className="text-sm font-normal text-slate-500">— {session.isAdmin ? "Pengelolaan sertifikat NBC" : "Daftar sertifikat yang ditautkan ke akun Anda"}</span>
           </h2>
 
           {isLoading ? (
@@ -214,17 +316,20 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {karya.map((item, index) => (
                 <div
-                  key={index}
+                      key={item.tokenId || index}
                   onClick={() => setSelectedKarya(selectedKarya === index ? null : index)}
                   className="group bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-emerald-500/30 transition-all duration-300 overflow-hidden cursor-pointer"
                 >
                   {/* Image */}
                   {item.image && (
-                    <div className="aspect-square overflow-hidden">
-                      <img
-                        src={item.image}
+                    <div className="relative aspect-[4/3] max-h-96 overflow-hidden bg-black/10 p-2">
+                      <Image
+                        src={imageSource(item.image)}
                         alt={item.name || "Batik"}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        unoptimized
+                        className="object-contain transition-transform duration-500"
                       />
                     </div>
                   )}
@@ -261,12 +366,37 @@ export default function DashboardPage() {
                         )}
 
                         {/* Tanggal */}
-                        {item.attributes?.find(a => a.trait_type === "Tanggal Sertifikasi") && (
+                        {(item.issuedAt || item.attributes?.find(a => ["Tanggal Terbit", "Date", "Tanggal Sertifikasi"].includes(a.trait_type))?.value) && (
                           <div>
-                            <p className="text-xs text-slate-500">Tanggal Sertifikasi</p>
+                            <p className="text-xs text-slate-500">Tanggal Terbit</p>
                             <p className="text-sm text-white">
-                              {item.attributes.find(a => a.trait_type === "Tanggal Sertifikasi").value}
+                              {new Date(item.issuedAt || item.attributes.find(a => ["Tanggal Terbit", "Date", "Tanggal Sertifikasi"].includes(a.trait_type)).value).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
                             </p>
+                          </div>
+                        )}
+
+                        <div>
+                          <p className="text-xs text-slate-500">Jenis Batik</p>
+                          <p className="text-sm text-white mt-1">{item.technique || item.attributes?.find(a => ["Jenis Batik", "Teknik Batik", "Teknik Pembuatan"].includes(a.trait_type))?.value || "Belum dicatat"}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-slate-500">Bahan yang Digunakan</p>
+                          <p className="text-sm text-white mt-1">{item.materials?.length ? item.materials.join(", ") : "Belum dicatat"}</p>
+                          {item.materialsSource === "application" && <p className="mt-1 text-[10px] text-amber-300/80">Data pelengkap aplikasi; metadata blockchain lama tidak diubah.</p>}
+                        </div>
+
+                        {item.canEditMaterials && (
+                          <div className="space-y-2" onClick={(event) => event.stopPropagation()}>
+                            <label className="block text-xs text-slate-400" htmlFor={`materials-${item.tokenId}`}>Lengkapi bahan (pisahkan dengan koma)</label>
+                            <textarea
+                              id={`materials-${item.tokenId}`}
+                              value={materialsDrafts[item.tokenId] ?? (item.materials || []).join(", ")}
+                              onChange={(event) => setMaterialsDrafts((prev) => ({ ...prev, [item.tokenId]: event.target.value }))}
+                              className="w-full rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white outline-none focus:border-amber-500/50"
+                              rows={2}
+                            />
+                            <button type="button" onClick={() => saveLegacyMaterials(item.tokenId)} className="rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400">Simpan bahan</button>
                           </div>
                         )}
 
@@ -284,8 +414,8 @@ export default function DashboardPage() {
                           className="inline-flex items-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-xs text-cyan-400 hover:bg-cyan-500/20 transition-all"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <span>🔍</span>
-                          <span>Lihat Halaman Verifikasi</span>
+                          <span>📡</span>
+                          <span>Buka halaman verifikasi NFC</span>
                         </Link>
                       </div>
                     )}

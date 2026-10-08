@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 // Komponen Logo Gemini
 const GeminiLogo = ({ className }) => (
@@ -85,7 +86,7 @@ const NFTCard = ({ nft }) => {
             {/* Image Preview */}
             <div className="h-40 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 relative overflow-hidden">
                 {nft.image && nft.image !== "ipfs://simulasi" ? (
-                    <img
+                    <Image
                         src={
                             nft.image.startsWith("data:")
                                 ? nft.image
@@ -94,7 +95,10 @@ const NFTCard = ({ nft }) => {
                                     : nft.image
                         }
                         alt={nft.name}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="(max-width: 768px) 50vw, 33vw"
+                        unoptimized
+                        className="w-full h-full object-contain"
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -107,9 +111,9 @@ const NFTCard = ({ nft }) => {
                     <span className="text-[10px] font-mono text-white">#{nft.tokenId}</span>
                 </div>
 
-                {/* Verified Badge */}
+                {/* On-chain badge */}
                 <div className="absolute top-3 right-3 bg-emerald-500/80 backdrop-blur-sm px-2 py-1 rounded-full">
-                    <span className="text-[10px] text-white font-bold">✓ VERIFIED</span>
+                    <span className="text-[10px] text-white font-bold">ON-CHAIN</span>
                 </div>
             </div>
 
@@ -124,9 +128,22 @@ const NFTCard = ({ nft }) => {
                 {/* Attributes */}
                 <div className="text-[10px]">
                     <div className="bg-white/5 p-2 rounded-lg">
-                        <p className="text-slate-500">Tanggal</p>
-                        <p className="text-white font-medium">{formatDate(getAttribute("Date"))}</p>
+                        <p className="text-slate-500">Tanggal Terbit</p>
+                        <p className="text-white font-medium">{formatDate(nft.issuedAt || getAttribute("Tanggal Terbit") || getAttribute("Date") || getAttribute("Tanggal Sertifikasi"))}</p>
                     </div>
+                </div>
+
+                <div className="bg-white/5 p-2 rounded-lg">
+                    <p className="text-slate-500 text-[10px] mb-1">Jenis Batik</p>
+                    <p className="text-white font-medium text-xs">{nft.technique || getAttribute("Jenis Batik") || getAttribute("Teknik Batik") || "Belum dicatat"}</p>
+                </div>
+
+                <div className="bg-white/5 p-2 rounded-lg">
+                    <p className="text-slate-500 text-[10px] mb-1">Bahan yang Digunakan</p>
+                    <p className="text-white font-medium text-xs">{nft.materials?.length ? nft.materials.join(", ") : "Belum dicatat"}</p>
+                    {nft.materialsSource === "application" && (
+                        <p className="text-amber-300/80 text-[9px] mt-1">Data pelengkap aplikasi</p>
+                    )}
                 </div>
 
                 {/* NFC UID */}
@@ -149,7 +166,7 @@ const NFTCard = ({ nft }) => {
                         href={nft.verifyUrl}
                         className="flex-1 text-center py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-bold rounded-xl hover:shadow-lg hover:shadow-emerald-500/30 transition-all"
                     >
-                        🔍 DETAIL
+                        📡 VERIFIKASI NFC
                     </Link>
                     <button
                         onClick={handleWriteNFC}
@@ -252,7 +269,7 @@ export default function GalleryPage() {
                     <div className="mt-6 inline-flex items-center gap-3 bg-white/5 backdrop-blur-sm px-6 py-3 rounded-full border border-white/10">
                         <GeminiLogo className="w-5 h-5" />
                         <span className="text-white font-bold">{nfts.length}</span>
-                        <span className="text-slate-400 text-sm">Sertifikat Terverifikasi</span>
+                        <span className="text-slate-400 text-sm">Sertifikat On-Chain</span>
                     </div>
                 </div>
 
@@ -274,7 +291,7 @@ export default function GalleryPage() {
                         href="/verify"
                         className="px-6 py-3 bg-white/5 border border-white/10 text-slate-300 rounded-xl font-bold text-sm hover:bg-white/10 transition-all"
                     >
-                        🔍 Scan QR
+                        📡 Verifikasi NFC
                     </Link>
                 </div>
 

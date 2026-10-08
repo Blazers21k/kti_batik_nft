@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
       if (data._devOtp) {
         setOtpCode(data._devOtp);
       }
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan koneksi");
     }
     setIsLoading(false);
@@ -124,7 +124,7 @@ export default function ForgotPasswordPage() {
       setTimeout(() => {
         router.push("/login");
       }, 2000);
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan koneksi");
     }
     setIsLoading(false);
@@ -151,7 +151,7 @@ export default function ForgotPasswordPage() {
         setSuccess("Kode reset password baru telah dikirim!");
         if (data._devOtp) setOtpCode(data._devOtp);
       }
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan koneksi");
     }
     setIsLoading(false);

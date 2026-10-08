@@ -1,22 +1,16 @@
 "use client";
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import AccountButton from './components/AccountButton';
+import { setThemePreference, useThemePreference } from './lib/client-preferences';
 
 export default function LandingPage() {
-  const [isDark, setIsDark] = useState(true);
+  const isDark = useThemePreference();
   const router = useRouter();
 
-  useEffect(() => {
-    const saved = localStorage.getItem('nbc-theme');
-    if (saved) setIsDark(saved === 'dark');
-  }, []);
-
   const toggleTheme = () => {
-    const next = !isDark;
-    setIsDark(next);
-    localStorage.setItem('nbc-theme', next ? 'dark' : 'light');
+    setThemePreference(!isDark);
   };
 
   // Cek auth sebelum masuk area pengrajin
@@ -80,7 +74,7 @@ export default function LandingPage() {
           {/* Logo */}
           <div className="relative inline-block mb-6">
             <div className={`absolute inset-0 blur-3xl opacity-30 animate-pulse ${isDark ? 'bg-gradient-to-r from-amber-400 to-yellow-600' : 'bg-gradient-to-r from-amber-300 to-yellow-500'}`} />
-            <img src="/Logo.png" alt="Nusantara Batik Chain" className="relative w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain filter drop-shadow-2xl" style={{ mixBlendMode: isDark ? 'lighten' : 'multiply' }} />
+            <Image src="/Logo.png" alt="Nusantara Batik Chain" width={384} height={384} priority sizes="(max-width: 768px) 16rem, (max-width: 1024px) 20rem, 24rem" className="relative h-64 w-64 object-contain drop-shadow-2xl md:h-80 md:w-80 lg:h-96 lg:w-96" style={{ mixBlendMode: isDark ? 'lighten' : 'multiply' }} />
           </div>
 
           {/* Tagline with Decorative Line */}

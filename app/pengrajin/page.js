@@ -1,8 +1,14 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import QRCode from "qrcode";
+import Image from "next/image";
 import ThemeToggle, { useTheme } from "../components/ThemeToggle";
+import { BATIK_TECHNIQUES } from "../lib/batik-techniques";
+
+const MATERIAL_GROUPS = [
+  { name: "Kain", options: ["Mori primisima", "Mori prima", "Mori biru", "Mori blaco/belacu", "Katun", "Sutra", "Tenun gedog"] },
+  { name: "Bahan proses batik", options: ["Malam/lilin batik", "Pewarna alam", "Pewarna sintetis", "Mordan/tawas"] },
+];
 
 // Komponen Logo Gemini
 const GeminiLogo = ({ className }) => (
@@ -28,7 +34,10 @@ export default function Home() {
     uidNFC: "",
     filosofi: "",
     imageBase64: "",
+    technique: "",
+    materials: [],
   });
+  const [customMaterial, setCustomMaterial] = useState("");
 
   const [step, setStep] = useState(1);
   const [previewText, setPreviewText] = useState("");
@@ -41,13 +50,12 @@ export default function Home() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [txHash, setTxHash] = useState("");
-  const [verifyUrl, setVerifyUrl] = useState(""); // URL untuk QR Code dengan signature
-  const [qrCodeImage, setQrCodeImage] = useState(""); // QR Code sebagai data URL
+  const [issuedAt, setIssuedAt] = useState("");
+  const [verifyUrl, setVerifyUrl] = useState(""); // URL pembuka halaman yang tetap meminta scan NFC
   const [isRecording, setIsRecording] = useState(false);
   const [gasEstimate, setGasEstimate] = useState(null); // Estimasi gas fee
   const [isEstimating, setIsEstimating] = useState(false);
   const [ipfsUrl, setIpfsUrl] = useState(""); // IPFS URL untuk gambar
-  const [isUploadingIPFS, setIsUploadingIPFS] = useState(false);
   const [nfcCheck, setNfcCheck] = useState(null); // { isRegistered, tokenName, tokenId } | null
   const [isCheckingNfc, setIsCheckingNfc] = useState(false);
 
@@ -72,13 +80,28 @@ export default function Home() {
       return;
     }
 
-    setIsAuthChecking(false);
+    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${userToken}` } })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Sesi login tidak valid.");
+        return response.json();
+      })
+      .then((data) => {
+        setForm((prev) => ({ ...prev, namaPengrajin: data.user?.nama || "" }));
+        setIsAuthChecking(false);
+      })
+      .catch(() => {
+        localStorage.removeItem("user_token");
+        localStorage.removeItem("user_data");
+        router.replace("/login");
+      });
   }, [router]);
 
   const validateForm = useCallback(() => {
     if (!form.uidNFC) return "Scan NFC terlebih dahulu!!";
     if (!form.imageBase64) return "Foto batik wajib diupload!";
     if (!form.namaPengrajin) return "Nama pengrajin wajib diisi!";
+    if (!form.technique) return "Pilih jenis batik terlebih dahulu.";
+    if (!form.materials.length) return "Pilih atau tambahkan minimal satu bahan batik.";
     return null;
   }, [form]);
 
@@ -99,6 +122,26 @@ export default function Home() {
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError(""); // Clear error saat user mengetik
+  };
+
+  const toggleMaterial = (material) => {
+    setForm((prev) => ({
+      ...prev,
+      materials: prev.materials.includes(material)
+        ? prev.materials.filter((item) => item !== material)
+        : [...prev.materials, material],
+    }));
+    setError("");
+  };
+
+  const addCustomMaterial = () => {
+    const material = customMaterial.trim();
+    if (!material) return;
+    setForm((prev) => prev.materials.some((item) => item.toLowerCase() === material.toLowerCase())
+      ? prev
+      : { ...prev, materials: [...prev.materials, material] });
+    setCustomMaterial("");
+    setError("");
   };
 
   // Fungsi Kompres Gambar ADAPTIF
@@ -288,7 +331,7 @@ export default function Home() {
       return;
     }
 
-    const template = `SERTIFIKAT KEASLIAN BATIK WIDOSARI\n\nKarya otentik ini dibuat oleh pengrajin ${form.namaPengrajin}.\n\nFilosofi:\n"${form.filosofi || 'Melestarikan warisan leluhur.'}"\n\nKarya ini telah diverifikasi keasliannya menggunakan teknologi Blockchain dan NFC.`;
+    const template = `SERTIFIKAT KEASLIAN BATIK WIDOSARI\n\nKarya otentik ini dibuat oleh pengrajin ${form.namaPengrajin}.\n\nJenis Batik: ${form.technique}\nBahan: ${form.materials.join(", ")}\n\nFilosofi:\n"${form.filosofi || 'Melestarikan warisan leluhur.'}"\n\nKarya ini telah diverifikasi keasliannya menggunakan teknologi Blockchain dan NFC.`;
 
     setPreviewText(template);
     setError("");
@@ -401,9 +444,13 @@ export default function Home() {
       setStatus("🚀 Mengirim ke Blockchain...");
       const res = await fetch("/api/mint", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("user_token") || ""}`,
+        },
         body: JSON.stringify({
           ...form,
+          materials: form.materials,
           finalDescription: previewText,
           ipfsUrl: finalIpfsUrl // Kirim IPFS URL, lebih murah!
         })
@@ -412,22 +459,9 @@ export default function Home() {
       if (data.success) {
         setStatus("✅ SUKSES! Sertifikat Tercetak.");
         setTxHash(data.txHash);
-        // Simpan verify URL dengan signature untuk QR Code
-        if (data.verifyUrl) {
-          setVerifyUrl(data.verifyUrl);
-          // Generate QR Code otomatis
-          const fullUrl = window.location.origin + data.verifyUrl;
-          try {
-            const qrDataUrl = await QRCode.toDataURL(fullUrl, {
-              width: 300,
-              margin: 2,
-              color: { dark: '#000000', light: '#ffffff' }
-            });
-            setQrCodeImage(qrDataUrl);
-          } catch (qrErr) {
-            console.error("Gagal generate QR:", qrErr);
-          }
-        }
+        setIssuedAt(data.issuedAt || "");
+        if (data.verifyUrl) setVerifyUrl(data.verifyUrl);
+        if (data.warning) setStatus(`⚠️ ${data.warning}`);
       } else {
         setError(data.error);
         setStatus("");
@@ -482,10 +516,10 @@ export default function Home() {
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Identitas</label>
                 <input
                   name="namaPengrajin"
-                  placeholder="Nama Pengrajin"
+                  placeholder="Nama dari akun pengrajin"
                   value={form.namaPengrajin}
-                  onChange={handleChange}
-                  className={`w-full p-4 rounded-xl text-sm outline-none transition-all ${
+                  readOnly
+                  className={`w-full p-4 rounded-xl text-sm outline-none transition-all opacity-80 ${
                     isDark
                       ? "bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:border-amber-500/50 focus:bg-white/10"
                       : "bg-slate-100 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:bg-white"
@@ -504,6 +538,78 @@ export default function Home() {
                   }`}
                 />
               </div>
+
+              <section className="space-y-3 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-cyan-300">Jenis Batik <span className="text-red-400">*</span></p>
+                  <p className="mt-1 text-[11px] text-slate-500">Pilih teknik utama yang digunakan pada karya.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {BATIK_TECHNIQUES.map((technique) => {
+                    const selected = form.technique === technique;
+                    return (
+                      <button
+                        key={technique}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => { setForm((prev) => ({ ...prev, technique })); setError(""); }}
+                        className={`rounded-full border px-3 py-1.5 text-xs transition ${selected ? "border-cyan-400 bg-cyan-500/20 text-cyan-200" : "border-white/10 bg-white/5 text-slate-300 hover:border-cyan-500/40"}`}
+                      >
+                        {selected ? "✓ " : "+ "}{technique}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="space-y-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-amber-300">Bahan Batik <span className="text-red-400">*</span></label>
+                  <p className="mt-1 text-[11px] text-slate-500">Pilih semua bahan yang digunakan. Minimal satu bahan wajib dicatat.</p>
+                </div>
+                {MATERIAL_GROUPS.map((group) => (
+                  <div key={group.name}>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">{group.name}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {group.options.map((material) => {
+                        const selected = form.materials.includes(material);
+                        return (
+                          <button
+                            key={material}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => toggleMaterial(material)}
+                            className={`rounded-full border px-3 py-1.5 text-xs transition ${selected ? "border-amber-400 bg-amber-500/20 text-amber-200" : "border-white/10 bg-white/5 text-slate-300 hover:border-amber-500/40"}`}
+                          >
+                            {selected ? "✓ " : "+ "}{material}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                <div className="flex gap-2">
+                  <input
+                    value={customMaterial}
+                    maxLength={120}
+                    onChange={(event) => setCustomMaterial(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addCustomMaterial(); } }}
+                    placeholder="Bahan lain (ketik sendiri)"
+                    className={`min-w-0 flex-1 rounded-xl p-3 text-xs outline-none ${isDark ? "border border-white/10 bg-white/5 text-white placeholder-slate-500" : "border border-slate-200 bg-white text-slate-900 placeholder-slate-400"}`}
+                  />
+                  <button type="button" onClick={addCustomMaterial} className="rounded-xl bg-amber-500 px-4 text-xs font-bold text-slate-950 hover:bg-amber-400">Tambah</button>
+                </div>
+                {form.materials.length > 0 && (
+                  <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3">
+                    {form.materials.map((material) => (
+                      <span key={material} className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200">
+                        {material}
+                        <button type="button" onClick={() => toggleMaterial(material)} aria-label={`Hapus ${material}`} className="font-bold text-emerald-300 hover:text-white">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </section>
 
               <div className="relative">
                 <textarea
@@ -534,7 +640,7 @@ export default function Home() {
                   <div className="relative border-2 border-dashed border-white/10 text-center rounded-2xl hover:border-indigo-500/50 h-24 overflow-hidden flex justify-center items-center transition-all bg-white/5">
                     <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" aria-label="Upload foto batik" />
                     {form.imageBase64 ? (
-                      <img src={form.imageBase64} alt="Preview foto batik" className="h-full w-full object-cover" />
+                      <Image src={form.imageBase64} alt="Preview foto batik" fill sizes="50vw" unoptimized className="object-contain" />
                     ) : (
                       <div className="p-3 text-center">
                         <span className="text-2xl">📸</span>
@@ -596,7 +702,7 @@ export default function Home() {
               {/* Preview Gambar */}
               <div className="w-full h-44 bg-white/5 rounded-2xl overflow-hidden border border-white/10 relative">
                 {form.imageBase64 ? (
-                  <img src={form.imageBase64} className="w-full h-full object-cover" alt="Preview batik untuk sertifikat" />
+                  <Image src={form.imageBase64} className="object-contain" alt="Preview batik untuk sertifikat" fill sizes="100vw" unoptimized />
                 ) : (
                   <div className="flex justify-center items-center h-full text-slate-500">No Image</div>
                 )}
@@ -621,6 +727,14 @@ export default function Home() {
                   }`}
                   aria-label="Edit deskripsi sertifikat"
                 />
+              </div>
+
+              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-cyan-300">Jenis Batik</p>
+                <p className="mt-2 text-sm text-slate-200">{form.technique}</p>
+                <p className="mt-4 text-xs font-bold uppercase tracking-wider text-amber-300">Bahan yang dicatat</p>
+                <p className="mt-2 text-sm text-slate-200">{form.materials.join(", ")}</p>
+                <p className="mt-3 text-[11px] text-slate-500">Tanggal terbit akan dicatat otomatis saat sertifikat dicetak.</p>
               </div>
 
               {/* RAG References */}
@@ -713,7 +827,7 @@ export default function Home() {
                   </div>
                 )}
                 {!gasEstimate && !isEstimating && (
-                  <p className="text-slate-500 text-xs text-center">Klik "Hitung Gas" untuk melihat estimasi biaya</p>
+                  <p className="text-slate-500 text-xs text-center">Klik &quot;Hitung Gas&quot; untuk melihat estimasi biaya</p>
                 )}
               </div>
 
@@ -741,66 +855,22 @@ export default function Home() {
           {status && (
             <div className={`mt-6 p-5 rounded-2xl border text-sm text-center transition-all ${status.includes("SUKSES") ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300" : "bg-white/5 border-white/10 text-slate-300"}`}>
               <p className="font-bold">{status}</p>
-
-              {/* QR Code Section */}
-              {qrCodeImage && (
-                <div className="mt-4 p-4 bg-white rounded-2xl">
-                  <p className="text-xs text-slate-600 font-bold mb-3 text-center">📱 QR Code Sertifikat</p>
-                  <div className="flex justify-center mb-4">
-                    <img src={qrCodeImage} alt="QR Code Verifikasi" className="w-48 h-48" />
-                  </div>
-                  <div className="flex gap-2 justify-center flex-wrap">
-                    <button
-                      onClick={writeToNFC}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition-all flex items-center gap-1"
-                    >
-                      📡 Write to NFC
-                    </button>
-                    <a
-                      href={qrCodeImage}
-                      download={`sertifikat-batik-qr.png`}
-                      className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 transition-all flex items-center gap-1"
-                    >
-                      📥 Download QR
-                    </a>
-                    <button
-                      onClick={() => {
-                        const printWindow = window.open('', '_blank');
-                        // SEDANG-4 FIX: Sanitasi URL sebelum inject ke HTML
-                        const safeUrl = (window.location.origin + verifyUrl)
-                          .replace(/&/g, '&amp;')
-                          .replace(/</g, '&lt;')
-                          .replace(/>/g, '&gt;')
-                          .replace(/"/g, '&quot;');
-                        printWindow.document.write(
-                          '<html>' +
-                          '<head><title>QR Code Sertifikat</title></head>' +
-                          '<body style="display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;">' +
-                          '<div style="text-align:center;">' +
-                          '<h2 style="font-family:sans-serif;">Sertifikat Batik</h2>' +
-                          '<img src="' + qrCodeImage + '" style="width:300px;height:300px;" />' +
-                          '<p style="font-family:monospace;font-size:10px;word-break:break-all;max-width:300px;">' + safeUrl + '</p>' +
-                          '</div></body></html>'
-                        );
-                        printWindow.document.close();
-                        printWindow.print();
-                      }}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition-all flex items-center gap-1"
-                    >
-                      🖨️ Print QR
-                    </button>
-                  </div>
+              {issuedAt && (
+                <div className="mx-auto mt-3 max-w-xs rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Tanggal Terbit</p>
+                  <p className="mt-1 text-sm text-white">{new Date(issuedAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</p>
                 </div>
               )}
-
-              {/* Verify URL dengan Signature */}
               {verifyUrl && (
-                <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/10">
-                  <p className="text-[10px] text-slate-400 mb-2">🔐 URL Verifikasi (dengan Signature):</p>
-                  <p className="text-[10px] font-mono text-cyan-300 break-all bg-black/30 p-2 rounded">
-                    {typeof window !== 'undefined' ? window.location.origin : ''}{verifyUrl}
-                  </p>
-                  <p className="text-[9px] text-slate-500 mt-2">Scan QR atau gunakan URL ini — terlindungi signature kriptografis</p>
+                <div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                  <p className="text-xs text-slate-300">Tulis tautan pembuka ke chip NFC. Tautan ini hanya membuka halaman scan; sertifikat tidak bisa diverifikasi tanpa UID chip fisik.</p>
+                  <button
+                    type="button"
+                    onClick={writeToNFC}
+                    className="mt-3 w-full rounded-lg bg-gradient-to-r from-blue-500 to-cyan-600 px-4 py-3 text-xs font-bold text-white transition hover:brightness-110"
+                  >
+                    📡 Tulis tautan ke chip NFC
+                  </button>
                 </div>
               )}
 
@@ -841,7 +911,7 @@ export default function Home() {
                 </div>
                 <div className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
                   <p className="font-bold text-amber-400">📖 Literatur Akademis</p>
-                  <p className="mt-1">• Adi Kusrianto — <em>"Batik: Filosofi, Motif, dan Kegunaan"</em> (2013)<br/>• Hamzuri — <em>"Batik Klasik"</em> (Djambatan, 1994)<br/>• Museum Batik Yogyakarta & Museum Batik Indonesia TMII</p>
+                  <p className="mt-1">• Adi Kusrianto — <em>&quot;Batik: Filosofi, Motif, dan Kegunaan&quot;</em> (2013)<br/>• Hamzuri — <em>&quot;Batik Klasik&quot;</em> (Djambatan, 1994)<br/>• Museum Batik Yogyakarta &amp; Museum Batik Indonesia TMII</p>
                 </div>
               </div>
 

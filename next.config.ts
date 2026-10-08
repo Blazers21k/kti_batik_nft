@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
+const projectRoot = process.cwd();
+
 const nextConfig: NextConfig = {
+  // Keep Next.js file tracing and Turbopack scoped to this app's root.
+  outputFileTracingRoot: projectRoot,
+  turbopack: {
+    root: projectRoot,
+  },
   // RENDAH-2: Security Headers
   async headers() {
     return [

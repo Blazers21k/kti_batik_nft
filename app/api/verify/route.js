@@ -1,196 +1,93 @@
-import { ethers } from "ethers";
 import { NextResponse } from "next/server";
 import METADATA_OVERRIDES from "../../config/metadata-overrides";
-import { enforceRateLimit, sanitizeInput, safeErrorResponse } from "../../lib/security";
-import { getClientIP } from "../../lib/rate-limit";
+import { getCertificateRecord } from "../../lib/certificate-store";
+import {
+  findTokenByNfcUid,
+  getMetadataIssueDate,
+  getMetadataMaterials,
+  getMetadataTechnique,
+  readCertificateFromChain,
+} from "../../lib/certificate-chain";
+import { enforceRateLimit, safeErrorResponse, sanitizeInput } from "../../lib/security";
 
-// DECENTRALIZED: Alamat Admin Wallet yang PUBLIK
-// Siapapun bisa verify signature dengan address ini tanpa perlu server
-const KNOWN_ADMIN_ADDRESS = process.env.NEXT_PUBLIC_ADMIN_ADDRESS || "";
+export const runtime = "nodejs";
 
-// Helper: Verify QR signature menggunakan ECDSA (decentralized)
-const verifyQRSignature = (tokenId, nfcUid, providedSignature) => {
-  if (!providedSignature) return { valid: false, level: "qr_only", signer: null };
-
+export async function POST(request) {
   try {
-    // Reconstruct message yang di-sign saat minting
-    const message = `batikchain:${tokenId}:${nfcUid}`;
-
-    // Recover address dari signature (DECENTRALIZED - tidak perlu secret key!)
-    const recoveredAddress = ethers.verifyMessage(message, providedSignature);
-
-    // Bandingkan dengan admin address yang sudah diketahui publik
-    const isValid = recoveredAddress.toLowerCase() === KNOWN_ADMIN_ADDRESS.toLowerCase();
-
-    return {
-      valid: isValid,
-      level: isValid ? "qr_signed" : "qr_invalid",
-      signer: recoveredAddress
-    };
-  } catch (e) {
-    console.error("Signature verification error:", e.message);
-    return { valid: false, level: "qr_invalid", signer: null };
-  }
-};
-
-export async function GET(request) {
-  try {
-    // Rate Limit: 30 verifikasi per menit per IP
-    const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 30 });
+    const rateLimitError = enforceRateLimit(request, { windowMs: 60000, max: 20 });
     if (rateLimitError) return rateLimitError;
 
-    // Request Logging
-    const ip = getClientIP(request);
-    console.log(`📝 [${new Date().toISOString()}] ${ip} → GET /api/verify`);
+    const body = await request.json().catch(() => ({}));
+    const nfcUid = sanitizeInput(body.nfcUid, 100);
+    const expectedTokenId = sanitizeInput(body.expectedTokenId, 20);
 
-    // 1. Validasi Konfigurasi Blockchain
-    const rpcUrl = process.env.ALCHEMY_RPC_URL;
-    const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-
-    if (!rpcUrl || !contractAddress) {
-      console.error("💥 Konfigurasi RPC/Contract tidak lengkap!");
-      return NextResponse.json(
-        { error: "Konfigurasi Blockchain tidak lengkap di server." },
-        { status: 500 }
-      );
+    if (!nfcUid) return NextResponse.json({ error: "UID harus dibaca langsung dari chip NFC." }, { status: 400 });
+    if (expectedTokenId && !/^\d+$/.test(expectedTokenId)) {
+      return NextResponse.json({ error: "Token ID pada tautan tidak valid." }, { status: 400 });
     }
 
-    // 2. Validasi Input Token ID & Signature (dengan sanitasi)
-    const { searchParams } = new URL(request.url);
-    const tokenId = sanitizeInput(searchParams.get("id"), 20);
-    const signature = searchParams.get("sig"); // Optional: QR signature
-
-    if (!tokenId) {
-      return NextResponse.json({ error: "Token ID wajib disertakan." }, { status: 400 });
+    const tokenId = await findTokenByNfcUid(nfcUid);
+    if (!tokenId) return NextResponse.json({ error: "Chip NFC ini belum terdaftar sebagai sertifikat." }, { status: 404 });
+    if (expectedTokenId && expectedTokenId !== tokenId) {
+      return NextResponse.json({ error: "Chip NFC tidak cocok dengan tautan sertifikat ini." }, { status: 403 });
     }
 
-    // Validasi tokenId hanya berisi angka
-    if (!/^\d+$/.test(tokenId)) {
-      return NextResponse.json({ error: "Token ID tidak valid." }, { status: 400 });
+    const certificate = await readCertificateFromChain(tokenId);
+    if (certificate.nfcUid !== nfcUid) {
+      return NextResponse.json({ error: "UID chip tidak cocok dengan data blockchain." }, { status: 403 });
     }
 
-    console.log(`🔍 Memverifikasi Token #${tokenId}${signature ? ' dengan signature' : ''}...`);
-
-    // 3. Setup Provider & Contract
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
-    const ABI = [
-      "function ownerOf(uint256 tokenId) view returns (address)",
-      "function tokenURI(uint256 tokenId) view returns (string)",
-      "function statusQr(uint256 tokenId) view returns (uint8)",
-      "function getUidNfc(uint256 tokenId) view returns (string)",
-      "function nfcUid(uint256 tokenId) view returns (string)"
-    ];
-    const contract = new ethers.Contract(contractAddress, ABI, provider);
-
-    // 4. Baca Data Owner & URI
-    let owner, uri;
-    try {
-      [owner, uri] = await Promise.all([
-        contract.ownerOf(tokenId),
-        contract.tokenURI(tokenId)
-      ]);
-    } catch (e) {
-      console.warn(`⚠️ Token #${tokenId} tidak ditemukan:`, e.message);
-      return NextResponse.json({ error: "Token belum dicetak atau tidak ditemukan." }, { status: 404 });
-    }
-
-    // 5. Baca NFC UID (Coba 2 Nama Fungsi)
-    let nfc = "-";
-    try {
-      nfc = await contract.getUidNfc(tokenId);
-    } catch {
-      try {
-        nfc = await contract.nfcUid(tokenId);
-      } catch {
-        console.log("ℹ️ Fungsi NFC tidak tersedia di kontrak ini.");
-      }
-    }
-
-    // 6. Baca Status QR
-    let statusText = "Tidak Diketahui";
-    try {
-      const statusQrCode = await contract.statusQr(tokenId);
-      statusText = statusQrCode.toString() === "1" ? "✅ AKTIF" : "⚠️ TERCETAK";
-    } catch {
-      statusText = "TERDAFTAR";
-    }
-
-    // 7. Decode Metadata (dengan Timeout untuk IPFS)
-    let metadata = { name: "Unknown", description: "-", attributes: [] };
-    try {
-      if (uri.startsWith("data:application/json;base64")) {
-        const base64Data = uri.split(",")[1];
-        const jsonString = Buffer.from(base64Data, 'base64').toString('utf-8');
-        metadata = JSON.parse(jsonString);
-      } else if (uri.startsWith("http") || uri.startsWith("ipfs")) {
-        const cleanUrl = uri.replace("ipfs://", "https://ipfs.io/ipfs/");
-
-        // Fetch dengan Timeout 10 detik
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        try {
-          const res = await fetch(cleanUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
-          metadata = await res.json();
-        } catch (fetchError) {
-          console.warn("⚠️ IPFS timeout atau gagal fetch, menggunakan metadata default.");
-        }
-      }
-    } catch (e) {
-      console.log("ℹ️ Gagal parse metadata, menggunakan default.");
-    }
-
-    // 8. Verify QR Signature menggunakan ECDSA (DECENTRALIZED)
-    const signatureResult = verifyQRSignature(tokenId, nfc, signature ? decodeURIComponent(signature) : null);
-
-    // Tentukan verification level
-    let verificationLevel = "qr_only"; // Default: QR tanpa signature
-    let verificationLabel = "📱 Verifikasi via QR/Link";
-    let signerAddress = null;
-
-    if (signature) {
-      if (signatureResult.valid) {
-        verificationLevel = "qr_signed";
-        verificationLabel = "🔐 QR Tersignature (Valid) - Decentralized";
-        signerAddress = signatureResult.signer;
-        console.log(`✅ ECDSA Signature valid! Signer: ${signerAddress}`);
-      } else {
-        verificationLevel = "qr_invalid";
-        verificationLabel = "⚠️ Signature Tidak Valid";
-        signerAddress = signatureResult.signer;
-        console.warn(`⚠️ Signature TIDAK valid! Recovered: ${signerAddress}, Expected: ${KNOWN_ADMIN_ADDRESS}`);
-      }
-    }
-
-    console.log(`✅ Verifikasi Token #${tokenId} berhasil. Level: ${verificationLevel}`);
-
-    // 9. Apply metadata overrides jika ada
+    const metadata = { ...certificate.metadata };
     const override = METADATA_OVERRIDES[tokenId];
     if (override) {
       if (override.image) metadata.image = override.image;
       if (override.name) metadata.name = override.name;
       if (override.description) metadata.description = override.description;
-      console.log(`📝 Override applied untuk Token #${tokenId}`);
     }
+
+    let materials = getMetadataMaterials(metadata);
+    let materialsSource = materials.length ? "blockchain" : null;
+    if (!materials.length) {
+      try {
+        const record = await getCertificateRecord(tokenId);
+        materials = record?.supplemental_materials || [];
+        if (materials.length) materialsSource = "application";
+      } catch (error) {
+        console.warn("Data pelengkap sertifikat tidak tersedia:", error.message);
+      }
+    }
+
+    const issuedAt = getMetadataIssueDate(metadata);
+    const technique = getMetadataTechnique(metadata);
+    metadata.materials = materials;
+    metadata.issuedAt = issuedAt;
+    metadata.technique = technique;
 
     return NextResponse.json({
       success: true,
       data: {
-        id: tokenId,
-        owner: owner,
-        nfcUid: nfc,
-        status: statusText,
-        metadata: metadata,
-        // Verification level info
-        verificationLevel: verificationLevel,
-        verificationLabel: verificationLabel,
-        signatureValid: signatureResult.valid,
-        hasSignature: !!signature
-      }
+        id: certificate.id,
+        owner: certificate.owner,
+        nfcUid: certificate.nfcUid,
+        status: certificate.status,
+        statusExplanation: "UID dari chip fisik cocok dengan UID yang tersimpan pada blockchain.",
+        verificationLevel: "nfc",
+        verificationLabel: "Chip NFC terdaftar dan cocok",
+        metadata,
+        materials,
+        materialsSource,
+        technique,
+        issuedAt,
+      },
     });
-
   } catch (error) {
-    return safeErrorResponse(error, "Terjadi kesalahan saat verifikasi.");
+    return safeErrorResponse(error, "Terjadi kesalahan saat verifikasi NFC.");
   }
+}
+
+export async function GET() {
+  return NextResponse.json(
+    { error: "Verifikasi sertifikat memerlukan pembacaan chip NFC fisik." },
+    { status: 405, headers: { Allow: "POST" } }
+  );
 }

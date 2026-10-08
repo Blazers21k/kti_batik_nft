@@ -91,7 +91,7 @@ export default function RegisterPage() {
       if (data._devOtp) {
         setOtpCode(data._devOtp);
       }
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan koneksi");
     }
     setIsLoading(false);
@@ -131,7 +131,7 @@ export default function RegisterPage() {
       setTimeout(() => {
         router.push("/dashboard");
       }, 1500);
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan koneksi");
     }
     setIsLoading(false);
@@ -162,7 +162,7 @@ export default function RegisterPage() {
         setSuccess("Kode verifikasi baru telah dikirim!");
         if (data._devOtp) setOtpCode(data._devOtp);
       }
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan koneksi");
     }
     setIsLoading(false);
