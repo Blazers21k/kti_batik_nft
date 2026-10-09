@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 import { NextResponse } from "next/server";
 import { enforceRateLimit, sanitizeInput, safeErrorResponse, validatePayloadSize } from "../../lib/security";
 import { getClientIP } from "../../lib/rate-limit";
-import { getRequestUser } from "../../lib/access-control";
+import { getRequestUser, isAdminUser } from "../../lib/access-control";
 import { listCertificateRecordsForUser, registerNewCertificate } from "../../lib/certificate-store";
 import { isBatikTechnique } from "../../lib/batik-techniques";
 
@@ -46,7 +46,7 @@ export async function POST(request) {
 
     // 2. Ambil & Validasi Input Data (dengan sanitasi)
     const body = await request.json().catch(() => ({}));
-    const namaPengrajin = sanitizeInput(user.nama, 200);
+    const namaPengrajin = sanitizeInput(isAdminUser(user) ? body.namaPengrajin : user.nama, 200);
     const uidNFC = sanitizeInput(body.uidNFC, 100);
     const alamatPengrajin = sanitizeInput(body.alamatPengrajin, 42);
     const finalDescription = sanitizeInput(body.finalDescription, 10000);

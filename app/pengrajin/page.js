@@ -27,6 +27,7 @@ export default function Home() {
   const isDark = useTheme();
   const router = useRouter();
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [isAdminSession, setIsAdminSession] = useState(false);
 
   const [form, setForm] = useState({
     namaPengrajin: "",
@@ -86,7 +87,12 @@ export default function Home() {
         return response.json();
       })
       .then((data) => {
-        setForm((prev) => ({ ...prev, namaPengrajin: data.user?.nama || "" }));
+        const adminSession = Boolean(data.isAdmin);
+        setIsAdminSession(adminSession);
+        setForm((prev) => ({
+          ...prev,
+          namaPengrajin: adminSession ? "" : data.user?.nama || "",
+        }));
         setIsAuthChecking(false);
       })
       .catch(() => {
@@ -514,12 +520,14 @@ export default function Home() {
             <form className="space-y-5">
               <div className="space-y-3">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Identitas</label>
+                {isAdminSession && <p className="text-xs text-amber-300/80">Masukkan nama pengrajin atau komunitas yang membuat karya. Sertifikat akan dikelola oleh NBC.</p>}
                 <input
                   name="namaPengrajin"
-                  placeholder="Nama dari akun pengrajin"
+                  placeholder={isAdminSession ? "Nama pengrajin atau komunitas" : "Nama dari akun pengrajin"}
                   value={form.namaPengrajin}
-                  readOnly
-                  className={`w-full p-4 rounded-xl text-sm outline-none transition-all opacity-80 ${
+                  readOnly={!isAdminSession}
+                  onChange={handleChange}
+                  className={`w-full p-4 rounded-xl text-sm outline-none transition-all ${!isAdminSession ? "opacity-80" : ""} ${
                     isDark
                       ? "bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:border-amber-500/50 focus:bg-white/10"
                       : "bg-slate-100 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:bg-white"
