@@ -150,45 +150,86 @@ export default function Home() {
     setError("");
   };
 
-  // Fungsi Kompres Gambar ADAPTIF
-  const compressImage = (file, maxWidth = 800, targetSizeKB = 100) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
+  // Kompresi asinkron dengan timeout agar file yang tak didukung tidak membuat UI menggantung.
+  const compressImage = (file, maxWidth = 800, targetSizeKB = 100) => new Promise((resolve, reject) => {
+    let settled = false;
+    let objectUrl = "";
+    const timeoutId = window.setTimeout(() => fail(new Error("Kompresi gambar terlalu lama. Coba pilih foto JPG atau PNG yang lebih kecil.")), 45000);
 
-          // Resize jika terlalu besar
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = "";
+      }
+    };
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const succeed = (value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
+
+    if (!file?.type?.startsWith("image/")) {
+      fail(new Error("File bukan gambar yang didukung. Pilih JPG atau PNG."));
+      return;
+    }
+
+    const img = new Image();
+    img.onerror = () => fail(new Error("Format foto tidak dapat dibaca browser. Coba ubah ke JPG atau PNG."));
+    img.onload = async () => {
+      try {
+        if (!img.naturalWidth || !img.naturalHeight) throw new Error("Ukuran foto tidak valid.");
+
+        const scale = Math.min(1, maxWidth / img.naturalWidth, 1200 / img.naturalHeight);
+        const width = Math.max(1, Math.round(img.naturalWidth * scale));
+        const height = Math.max(1, Math.round(img.naturalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Browser tidak dapat memproses foto ini.");
+        context.drawImage(img, 0, 0, width, height);
+
+        const toBlob = (quality) => new Promise((resolveBlob, rejectBlob) => {
+          canvas.toBlob((blob) => {
+            if (blob) resolveBlob(blob);
+            else rejectBlob(new Error("Browser gagal mengompres foto."));
+          }, "image/jpeg", quality);
+        });
+
+        let quality = 0.88;
+        let blob = await toBlob(quality);
+        while (blob.size > targetSizeKB * 1024 && quality > 0.48) {
+          quality = Math.max(0.48, quality - 0.1);
+          blob = await toBlob(quality);
+        }
+
+        const reader = new FileReader();
+        reader.onerror = () => fail(new Error("Hasil kompresi tidak dapat dibaca."));
+        reader.onload = () => {
+          if (typeof reader.result !== "string") {
+            fail(new Error("Hasil kompresi gambar tidak valid."));
+            return;
           }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          // Adaptive: mulai 90%, turun sampai target tercapai
-          let quality = 0.9;
-          let compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-
-          while (compressedBase64.length > targetSizeKB * 1024 * 1.37 && quality > 0.3) {
-            quality -= 0.1;
-            compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-          }
-
-          console.log(`📸 Quality: ${Math.round(quality * 100)}%, Size: ~${Math.round(compressedBase64.length / 1024)}KB`);
-          resolve(compressedBase64);
+          console.log(`📸 Quality: ${Math.round(quality * 100)}%, Size: ~${Math.round(blob.size / 1024)}KB`);
+          succeed(reader.result);
         };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  };
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        fail(error);
+      }
+    };
+
+    objectUrl = URL.createObjectURL(file);
+    img.src = objectUrl;
+  });
 
   // Fungsi Upload Gambar + Preview (dengan kompresi + IPFS)
   const handleImageUpload = async (e) => {
@@ -227,7 +268,8 @@ export default function Home() {
         setError("");
       } catch (err) {
         console.error("❌ Gagal proses gambar:", err);
-        setError("Gagal memproses gambar");
+        setStatus("");
+        setError(err.message || "Gagal memproses gambar. Coba foto JPG atau PNG.");
       }
     }
   };
