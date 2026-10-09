@@ -3,6 +3,7 @@
 import { Suspense, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import ThemeToggle, { useTheme } from "../components/ThemeToggle";
 
 function formatDate(value) {
@@ -99,6 +100,18 @@ function VerificationContent() {
   return (
     <main className={`min-h-screen relative overflow-hidden px-4 py-10 ${isDark ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
       <ThemeToggle />
+      <Link
+        href="/"
+        aria-label="Kembali ke halaman utama"
+        className={`fixed left-[4.5rem] top-5 z-[100] inline-flex h-12 items-center gap-2 rounded-full border px-4 text-sm font-semibold shadow-lg backdrop-blur-xl transition hover:scale-105 ${isDark ? "border-white/20 bg-white/10 text-white hover:bg-white/20" : "border-black/10 bg-white/80 text-slate-700 hover:bg-white"}`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m3 10 9-7 9 7" />
+          <path d="M5 9v11h14V9" />
+          <path d="M9 20v-6h6v6" />
+        </svg>
+        <span>Home</span>
+      </Link>
       <div className={`absolute inset-0 pointer-events-none ${isDark ? "bg-gradient-to-br from-slate-950 via-indigo-950/40 to-slate-950" : "bg-gradient-to-br from-white via-emerald-50 to-slate-50"}`} />
       <div className="relative z-10 mx-auto w-full max-w-2xl">
         <header className="text-center mb-8">
