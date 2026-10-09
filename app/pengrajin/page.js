@@ -181,7 +181,9 @@ export default function Home() {
       return;
     }
 
-    const img = new Image();
+    // `Image` is also imported from next/image above, so `new Image()` resolves
+    // to the React component rather than the browser's image constructor.
+    const img = document.createElement("img");
     img.onerror = () => fail(new Error("Format foto tidak dapat dibaca browser. Coba ubah ke JPG atau PNG."));
     img.onload = async () => {
       try {
