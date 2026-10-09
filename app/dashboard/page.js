@@ -119,16 +119,22 @@ export default function DashboardPage() {
   const assignLegacyCertificate = async () => {
     if (!assignmentTokenId || !assignmentArtisanId) return;
     const token = localStorage.getItem("user_token");
-    setAdminMessage("Menghubungkan sertifikat ke akun pengrajin…");
+    const manageAsAdmin = assignmentArtisanId === "__NBC_ADMIN__";
+    setAdminMessage(manageAsAdmin ? "Menghubungkan sertifikat ke pengelolaan NBC…" : "Menghubungkan sertifikat ke akun pengrajin…");
     try {
       const response = await fetch(`/api/admin/certificates/${assignmentTokenId}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ artisanUserId: assignmentArtisanId }),
+        body: JSON.stringify({
+          artisanUserId: manageAsAdmin ? "" : assignmentArtisanId,
+          manageAsAdmin,
+        }),
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || "Gagal menghubungkan sertifikat.");
-      setAdminMessage(`Sertifikat #${assignmentTokenId} berhasil ditautkan.`);
+      setAdminMessage(manageAsAdmin
+        ? `Sertifikat #${assignmentTokenId} berhasil ditautkan ke pengelolaan NBC.`
+        : `Sertifikat #${assignmentTokenId} berhasil ditautkan ke akun pengrajin.`);
       setAssignmentTokenId("");
       setAssignmentArtisanId("");
       await fetchKarya(token, true);
@@ -279,8 +285,8 @@ export default function DashboardPage() {
 
         {session.isAdmin && (
           <section className="max-w-6xl mx-auto mb-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
-            <h2 className="font-bold text-amber-200">Tautkan sertifikat lama ke akun pengrajin</h2>
-            <p className="mt-1 text-xs text-slate-400">Sertifikat lama perlu ditautkan satu kali sebelum pengrajin dapat melengkapi bahan.</p>
+            <h2 className="font-bold text-amber-200">Hubungkan sertifikat lama</h2>
+            <p className="mt-1 text-xs text-slate-400">Pilih akun pengrajin jika mereka memakai dashboard, atau pilih pengelolaan NBC jika kamu mengurus sertifikat tanpa meminta akun mereka.</p>
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]">
               <select value={assignmentTokenId} onChange={(event) => setAssignmentTokenId(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">
                 <option value="">Pilih sertifikat lama</option>
@@ -289,10 +295,11 @@ export default function DashboardPage() {
                 ))}
               </select>
               <select value={assignmentArtisanId} onChange={(event) => setAssignmentArtisanId(event.target.value)} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm text-white">
-                <option value="">Pilih akun pengrajin</option>
+                <option value="">Pilih pengelola data</option>
+                <option value="__NBC_ADMIN__">Kelola oleh NBC (tanpa akun pengrajin)</option>
                 {adminArtisans.map((artisan) => <option key={artisan.id} value={artisan.id}>{artisan.nama} ({artisan.email})</option>)}
               </select>
-              <button type="button" onClick={assignLegacyCertificate} disabled={!assignmentTokenId || !assignmentArtisanId} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">Tautkan</button>
+              <button type="button" onClick={assignLegacyCertificate} disabled={!assignmentTokenId || !assignmentArtisanId} className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">Hubungkan</button>
             </div>
           </section>
         )}

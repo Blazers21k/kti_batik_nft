@@ -18,14 +18,22 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Token ID tidak valid." }, { status: 400 });
     }
 
-    const body = await request.json().catch(() => ({}));
+    const parsedBody = await request.json().catch(() => ({}));
+    const body = parsedBody && typeof parsedBody === "object" ? parsedBody : {};
+    const manageAsAdmin = body.manageAsAdmin === true;
     const artisanUserId = sanitizeInput(body.artisanUserId, 100);
-    if (!artisanUserId) return NextResponse.json({ error: "Akun pengrajin wajib dipilih." }, { status: 400 });
+    let targetUserId = artisanUserId;
 
-    const state = await readAuthState();
-    const artisan = state.users.find((entry) => entry.id === artisanUserId);
-    if (!artisan || isAdminUser(artisan)) {
-      return NextResponse.json({ error: "Akun pengrajin tidak ditemukan." }, { status: 404 });
+    if (manageAsAdmin) {
+      targetUserId = user.id;
+    } else {
+      if (!artisanUserId) return NextResponse.json({ error: "Pilih akun pengrajin atau pengelolaan NBC." }, { status: 400 });
+
+      const state = await readAuthState();
+      const artisan = state.users.find((entry) => entry.id === artisanUserId);
+      if (!artisan || isAdminUser(artisan)) {
+        return NextResponse.json({ error: "Akun pengrajin tidak ditemukan." }, { status: 404 });
+      }
     }
 
     try {
@@ -34,11 +42,18 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Sertifikat tidak ditemukan di blockchain." }, { status: 404 });
     }
 
-    const record = await assignCertificate(tokenId, artisanUserId, user.id);
+    const record = await assignCertificate(tokenId, targetUserId, user.id);
     if (!record) {
-      return NextResponse.json({ error: "Sertifikat ini sudah pernah ditautkan ke akun pengrajin." }, { status: 409 });
+      return NextResponse.json({ error: "Sertifikat ini sudah terhubung ke akun pengelola." }, { status: 409 });
     }
-    return NextResponse.json({ success: true, record: { tokenId: record.token_id, artisanUserId: record.artisan_user_id } });
+    return NextResponse.json({
+      success: true,
+      record: {
+        tokenId: record.token_id,
+        artisanUserId: record.artisan_user_id,
+        managedByAdmin: manageAsAdmin,
+      },
+    });
   } catch (error) {
     return safeErrorResponse(error, "Gagal menghubungkan sertifikat ke akun pengrajin.");
   }
