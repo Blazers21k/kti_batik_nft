@@ -20,6 +20,9 @@ export function getGeminiClient() {
 export function isRetryableModelError(error) {
   const status = Number(error?.status || error?.code);
   if (status === 429 || status === 404 || status >= 500) return true;
-  return /rate.?limit|quota|temporar|model.*(not found|unavailable)|\b(429|500|502|503|504)\b/i
-    .test(String(error?.message || ""));
+  const details = [error?.message, error?.cause?.message, error?.cause?.code, error?.code]
+    .filter(Boolean)
+    .join(" ");
+  return /rate.?limit|quota|temporar|model.*(not found|unavailable)|fetch failed|network|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENETUNREACH|UND_ERR_\w+|socket hang up|\b(429|500|502|503|504)\b/i
+    .test(details);
 }

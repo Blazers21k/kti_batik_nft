@@ -399,7 +399,7 @@ export default function Home() {
 
     setIsAnalyzing(true);
     setError("");
-    setStatus("🤖 Gemini 2.5 Flash sedang menganalisis...");
+    setStatus("🤖 Gemini sedang menganalisis...");
 
     try {
       const res = await fetch("/api/ai-preview", {
